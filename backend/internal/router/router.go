@@ -34,6 +34,7 @@ func Setup(db *gorm.DB, rdb *redis.Client, store storage.ObjectStorage, cfg *con
 	r.Use(middleware.Logger(mwLog))
 	r.Use(middleware.CORS(cfg.Server.Mode, cfg.Server.AllowedOrigins))
 	r.Use(middleware.SecurityHeaders())
+	r.Use(middleware.CSRF())
 	r.Use(middleware.RateLimiter(rdb, middleware.RateLimiterConfig{
 		MaxRequests: 100,
 		Window:      time.Second,
