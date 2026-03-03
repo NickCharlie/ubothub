@@ -31,6 +31,7 @@ type ServerConfig struct {
 	WriteTimeout   int      `mapstructure:"write_timeout"`
 	AllowedOrigins []string `mapstructure:"allowed_origins"`
 	FrontendURL    string   `mapstructure:"frontend_url"`
+	EncryptionKey  string   `mapstructure:"encryption_key"`
 }
 
 // DatabaseConfig holds PostgreSQL connection configuration.

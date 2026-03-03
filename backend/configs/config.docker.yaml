@@ -8,6 +8,7 @@ server:
     - "http://localhost:80"
     - "http://127.0.0.1"
   frontend_url: "http://localhost"
+  encryption_key: "ubothub-docker-dev-encryption-key-change-in-prod"
 
 database:
   host: "postgres"

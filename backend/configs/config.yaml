@@ -9,6 +9,7 @@ server:
     - "https://ubothub.com"
     - "https://www.ubothub.com"
   frontend_url: "https://ubothub.com"  # frontend base URL for email links etc.
+  encryption_key: "ubothub-dev-encryption-key-change-in-production"  # AES-256 key for sensitive config fields
 
 database:
   host: "localhost"
