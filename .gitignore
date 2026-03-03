@@ -10,11 +10,15 @@ vendor/
 # Build output
 frontend/dist/
 frontend/.vite/
+frontend/*.tsbuildinfo
+frontend/vite.config.js
+frontend/vite.config.d.ts
 
 # IDE
 .idea/
 .vscode/
-.claude/ 
+.claude/
+.VSCodeCounter/
 *.swp
 *.swo
 *~
