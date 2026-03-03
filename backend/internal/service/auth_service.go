@@ -216,3 +216,50 @@ func (s *AuthService) incrementLoginFailure(ctx context.Context, key string) {
 	pipe.Expire(ctx, key, 15*time.Minute)
 	pipe.Exec(ctx)
 }
+
+// MarkEmailVerified sets the user's email as verified.
+func (s *AuthService) MarkEmailVerified(ctx context.Context, userID string) error {
+	user, err := s.userRepo.FindByID(ctx, userID)
+	if err != nil {
+		return fmt.Errorf("find user: %w", err)
+	}
+
+	user.EmailVerified = true
+	if err := s.userRepo.Update(ctx, user); err != nil {
+		return fmt.Errorf("update user: %w", err)
+	}
+
+	s.logger.Info("email verified", zap.String("user_id", userID))
+	return nil
+}
+
+// FindUserByEmail returns a user by email (used by forgot-password flow).
+func (s *AuthService) FindUserByEmail(ctx context.Context, email string) (*model.User, error) {
+	return s.userRepo.FindByEmail(ctx, email)
+}
+
+// FindUserByID returns a user by ID.
+func (s *AuthService) FindUserByID(ctx context.Context, userID string) (*model.User, error) {
+	return s.userRepo.FindByID(ctx, userID)
+}
+
+// ResetPassword updates the user's password hash.
+func (s *AuthService) ResetPassword(ctx context.Context, userID, newPassword string) error {
+	user, err := s.userRepo.FindByID(ctx, userID)
+	if err != nil {
+		return fmt.Errorf("find user: %w", err)
+	}
+
+	passwordHash, err := hash.HashPassword(newPassword)
+	if err != nil {
+		return fmt.Errorf("hash password: %w", err)
+	}
+
+	user.PasswordHash = passwordHash
+	if err := s.userRepo.Update(ctx, user); err != nil {
+		return fmt.Errorf("update password: %w", err)
+	}
+
+	s.logger.Info("password reset", zap.String("user_id", userID))
+	return nil
+}

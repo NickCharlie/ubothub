@@ -17,6 +17,7 @@ type Config struct {
 	JWT        JWTConfig        `mapstructure:"jwt"`
 	Queue      QueueConfig      `mapstructure:"queue"`
 	Log        LogConfig        `mapstructure:"log"`
+	Email      EmailConfig      `mapstructure:"email"`
 	Moderation ModerationConfig `mapstructure:"moderation"`
 }
 
@@ -135,6 +136,16 @@ type ModerationConfig struct {
 	AccessKeyID     string `mapstructure:"access_key_id"`
 	AccessKeySecret string `mapstructure:"access_key_secret"`
 	Endpoint        string `mapstructure:"endpoint"`
+}
+
+// EmailConfig holds SMTP email configuration (supports Alibaba Cloud DirectMail).
+type EmailConfig struct {
+	SMTPHost    string `mapstructure:"smtp_host"`
+	SMTPPort    int    `mapstructure:"smtp_port"`
+	FromAddress string `mapstructure:"from_address"`
+	FromName    string `mapstructure:"from_name"`
+	Password    string `mapstructure:"password"`
+	UseTLS      bool   `mapstructure:"use_tls"`
 }
 
 // Load reads configuration from file and environment variables.

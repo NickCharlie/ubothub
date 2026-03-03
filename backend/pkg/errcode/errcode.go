@@ -38,6 +38,9 @@ var (
 	ErrWeakPassword       = &ErrCode{Code: 11007, Message: "password does not meet strength requirements", Status: http.StatusBadRequest}
 	ErrAgreementRequired  = &ErrCode{Code: 11008, Message: "you must accept the terms of service and privacy policy", Status: http.StatusBadRequest}
 	ErrCaptchaInvalid     = &ErrCode{Code: 11009, Message: "invalid or expired captcha", Status: http.StatusBadRequest}
+	ErrEmailNotVerified   = &ErrCode{Code: 11010, Message: "email address not verified", Status: http.StatusForbidden}
+	ErrEmailAlreadyVerified = &ErrCode{Code: 11011, Message: "email already verified", Status: http.StatusBadRequest}
+	ErrResetTokenInvalid  = &ErrCode{Code: 11012, Message: "invalid or expired reset token", Status: http.StatusBadRequest}
 )
 
 // Bot error codes (12000-12999).

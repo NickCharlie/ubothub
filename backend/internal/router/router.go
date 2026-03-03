@@ -15,6 +15,7 @@ import (
 	"github.com/NickCharlie/ubothub/backend/internal/repository"
 	"github.com/NickCharlie/ubothub/backend/internal/service"
 	"github.com/NickCharlie/ubothub/backend/internal/storage"
+	"github.com/NickCharlie/ubothub/backend/pkg/email"
 	"github.com/NickCharlie/ubothub/backend/pkg/httpclient"
 	"github.com/NickCharlie/ubothub/backend/pkg/logger"
 	"github.com/NickCharlie/ubothub/backend/pkg/token"
@@ -106,8 +107,20 @@ func Setup(db *gorm.DB, rdb *redis.Client, store storage.ObjectStorage, cfg *con
 	// Initialize captcha service (Redis-backed for distributed deployments).
 	captchaSvc := captcha.NewService(rdb)
 
+	// Initialize email service (Alibaba Cloud DirectMail via SMTP).
+	emailLog := logger.Named(rootLogger, "email")
+	emailSender := email.NewSender(email.Config{
+		SMTPHost:    cfg.Email.SMTPHost,
+		SMTPPort:    cfg.Email.SMTPPort,
+		FromAddress: cfg.Email.FromAddress,
+		FromName:    cfg.Email.FromName,
+		Password:    cfg.Email.Password,
+		UseTLS:      cfg.Email.UseTLS,
+	})
+	emailSvc := service.NewEmailService(emailSender, rdb, cfg.Server.FrontendURL, emailLog)
+
 	// Initialize handlers.
-	authHandler := handler.NewAuthHandler(authSvc, legalSvc, captchaSvc)
+	authHandler := handler.NewAuthHandler(authSvc, emailSvc, legalSvc, captchaSvc)
 	userHandler := handler.NewUserHandler(userSvc)
 	botHandler := handler.NewBotHandler(botSvc)
 	assetHandler := handler.NewAssetHandler(assetSvc)
@@ -129,6 +142,9 @@ func Setup(db *gorm.DB, rdb *redis.Client, store storage.ObjectStorage, cfg *con
 		authRoutes.POST("/login", authHandler.Login)
 		authRoutes.POST("/refresh", authHandler.Refresh)
 		authRoutes.POST("/logout", authHandler.Logout)
+		authRoutes.GET("/verify-email", authHandler.VerifyEmail)
+		authRoutes.POST("/forgot-password", authHandler.ForgotPassword)
+		authRoutes.POST("/reset-password", authHandler.ResetPassword)
 	}
 
 	// Public asset browsing (no auth required).
@@ -164,6 +180,7 @@ func Setup(db *gorm.DB, rdb *redis.Client, store storage.ObjectStorage, cfg *con
 		authGroup.GET("/users/me", userHandler.GetMe)
 		authGroup.PUT("/users/me", userHandler.UpdateMe)
 		authGroup.PUT("/users/me/password", userHandler.ChangePassword)
+		authGroup.POST("/auth/resend-verification", authHandler.ResendVerification)
 
 		// Bot management routes.
 		authGroup.GET("/bots", botHandler.List)

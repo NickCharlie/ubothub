@@ -16,13 +16,14 @@ import (
 // AuthHandler handles authentication HTTP endpoints.
 type AuthHandler struct {
 	authSvc    *service.AuthService
+	emailSvc   *service.EmailService
 	legalSvc   *service.LegalService
 	captchaSvc *captcha.Service
 }
 
 // NewAuthHandler creates a new auth handler.
-func NewAuthHandler(authSvc *service.AuthService, legalSvc *service.LegalService, captchaSvc *captcha.Service) *AuthHandler {
-	return &AuthHandler{authSvc: authSvc, legalSvc: legalSvc, captchaSvc: captchaSvc}
+func NewAuthHandler(authSvc *service.AuthService, emailSvc *service.EmailService, legalSvc *service.LegalService, captchaSvc *captcha.Service) *AuthHandler {
+	return &AuthHandler{authSvc: authSvc, emailSvc: emailSvc, legalSvc: legalSvc, captchaSvc: captchaSvc}
 }
 
 // Captcha handles GET /api/v1/auth/captcha.
@@ -83,18 +84,26 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		_ = h.legalSvc.RecordAcceptance(ctx, result.User.ID, privacyAgreement.ID, ipAddr, userAgent)
 	}
 
+	// Send verification email (non-blocking, log errors only).
+	go func() {
+		if h.emailSvc != nil {
+			_ = h.emailSvc.SendVerificationEmail(c.Request.Context(), result.User.ID, result.User.Username, result.User.Email)
+		}
+	}()
+
 	response.OK(c, gin.H{
 		"access_token":  result.AccessToken,
 		"refresh_token": result.RefreshToken,
 		"expires_in":    900,
 		"user": gin.H{
-			"id":           result.User.ID,
-			"email":        result.User.Email,
-			"username":     result.User.Username,
-			"display_name": result.User.DisplayName,
-			"role":         result.User.Role,
-			"status":       result.User.Status,
-			"created_at":   result.User.CreatedAt.Format("2006-01-02T15:04:05Z"),
+			"id":             result.User.ID,
+			"email":          result.User.Email,
+			"username":       result.User.Username,
+			"display_name":   result.User.DisplayName,
+			"email_verified": result.User.EmailVerified,
+			"role":           result.User.Role,
+			"status":         result.User.Status,
+			"created_at":     result.User.CreatedAt.Format("2006-01-02T15:04:05Z"),
 		},
 	})
 }
@@ -131,13 +140,14 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		"refresh_token": result.RefreshToken,
 		"expires_in":    900,
 		"user": gin.H{
-			"id":           result.User.ID,
-			"email":        result.User.Email,
-			"username":     result.User.Username,
-			"display_name": result.User.DisplayName,
-			"role":         result.User.Role,
-			"status":       result.User.Status,
-			"created_at":   result.User.CreatedAt.Format("2006-01-02T15:04:05Z"),
+			"id":             result.User.ID,
+			"email":          result.User.Email,
+			"username":       result.User.Username,
+			"display_name":   result.User.DisplayName,
+			"email_verified": result.User.EmailVerified,
+			"role":           result.User.Role,
+			"status":         result.User.Status,
+			"created_at":     result.User.CreatedAt.Format("2006-01-02T15:04:05Z"),
 		},
 	})
 }
@@ -181,4 +191,102 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 	}
 
 	response.OKWithMessage(c, "logged out successfully")
+}
+
+// VerifyEmail handles GET /api/v1/auth/verify-email?token=xxx.
+func (h *AuthHandler) VerifyEmail(c *gin.Context) {
+	token := c.Query("token")
+	if token == "" {
+		response.Error(c, errcode.ErrBadRequest)
+		return
+	}
+
+	userID, err := h.emailSvc.VerifyEmail(c.Request.Context(), token)
+	if err != nil {
+		if errors.Is(err, service.ErrTokenInvalid) {
+			response.Error(c, errcode.ErrResetTokenInvalid)
+			return
+		}
+		response.Error(c, errcode.ErrInternalServer)
+		return
+	}
+
+	if err := h.authSvc.MarkEmailVerified(c.Request.Context(), userID); err != nil {
+		response.Error(c, errcode.ErrInternalServer)
+		return
+	}
+
+	response.OKWithMessage(c, "email verified successfully")
+}
+
+// ForgotPassword handles POST /api/v1/auth/forgot-password.
+func (h *AuthHandler) ForgotPassword(c *gin.Context) {
+	var req request.ForgotPasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.ValidationError(c, err.Error())
+		return
+	}
+
+	// Always return success to prevent email enumeration.
+	user, err := h.authSvc.FindUserByEmail(c.Request.Context(), req.Email)
+	if err == nil && user != nil && h.emailSvc != nil {
+		_ = h.emailSvc.SendPasswordResetEmail(c.Request.Context(), user.ID, user.Username, user.Email)
+	}
+
+	response.OKWithMessage(c, "if the email exists, a reset link has been sent")
+}
+
+// ResetPassword handles POST /api/v1/auth/reset-password.
+func (h *AuthHandler) ResetPassword(c *gin.Context) {
+	var req request.ResetPasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.ValidationError(c, err.Error())
+		return
+	}
+
+	userID, err := h.emailSvc.ValidateResetToken(c.Request.Context(), req.Token)
+	if err != nil {
+		if errors.Is(err, service.ErrTokenInvalid) {
+			response.Error(c, errcode.ErrResetTokenInvalid)
+			return
+		}
+		response.Error(c, errcode.ErrInternalServer)
+		return
+	}
+
+	if err := h.authSvc.ResetPassword(c.Request.Context(), userID, req.NewPassword); err != nil {
+		response.Error(c, errcode.ErrInternalServer)
+		return
+	}
+
+	response.OKWithMessage(c, "password reset successfully")
+}
+
+// ResendVerification handles POST /api/v1/auth/resend-verification.
+func (h *AuthHandler) ResendVerification(c *gin.Context) {
+	userID := c.GetString("user_id")
+	if userID == "" {
+		response.Error(c, errcode.ErrUnauthorized)
+		return
+	}
+
+	user, err := h.authSvc.FindUserByID(c.Request.Context(), userID)
+	if err != nil {
+		response.Error(c, errcode.ErrInternalServer)
+		return
+	}
+
+	if user.EmailVerified {
+		response.Error(c, errcode.ErrEmailAlreadyVerified)
+		return
+	}
+
+	if h.emailSvc != nil {
+		if err := h.emailSvc.SendVerificationEmail(c.Request.Context(), user.ID, user.Username, user.Email); err != nil {
+			response.Error(c, errcode.ErrInternalServer)
+			return
+		}
+	}
+
+	response.OKWithMessage(c, "verification email sent")
 }
