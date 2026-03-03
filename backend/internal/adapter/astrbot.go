@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"time"
 )
 
 // AstrBotAdapter integrates with AstrBot via its HTTP API.
@@ -17,11 +16,9 @@ type AstrBotAdapter struct {
 	client *http.Client
 }
 
-// NewAstrBotAdapter creates a new AstrBot adapter.
-func NewAstrBotAdapter() *AstrBotAdapter {
-	return &AstrBotAdapter{
-		client: &http.Client{Timeout: 30 * time.Second},
-	}
+// NewAstrBotAdapter creates a new AstrBot adapter using the provided shared HTTP client.
+func NewAstrBotAdapter(client *http.Client) *AstrBotAdapter {
+	return &AstrBotAdapter{client: client}
 }
 
 func (a *AstrBotAdapter) Framework() string {

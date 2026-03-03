@@ -2,6 +2,7 @@ package adapter
 
 import (
 	"fmt"
+	"net/http"
 	"sync"
 )
 
@@ -12,12 +13,13 @@ type Factory struct {
 }
 
 // NewFactory creates a new adapter factory with default adapters registered.
-func NewFactory() *Factory {
+// The shared HTTP client is used by all adapters for connection pooling.
+func NewFactory(client *http.Client) *Factory {
 	f := &Factory{
 		adapters: make(map[string]BotAdapter),
 	}
-	f.Register(NewAstrBotAdapter())
-	f.Register(NewWebhookAdapter())
+	f.Register(NewAstrBotAdapter(client))
+	f.Register(NewWebhookAdapter(client))
 	return f
 }
 

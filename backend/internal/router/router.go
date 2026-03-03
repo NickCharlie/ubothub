@@ -15,6 +15,7 @@ import (
 	"github.com/NickCharlie/ubothub/backend/internal/repository"
 	"github.com/NickCharlie/ubothub/backend/internal/service"
 	"github.com/NickCharlie/ubothub/backend/internal/storage"
+	"github.com/NickCharlie/ubothub/backend/pkg/httpclient"
 	"github.com/NickCharlie/ubothub/backend/pkg/logger"
 	"github.com/NickCharlie/ubothub/backend/pkg/token"
 	"go.uber.org/zap"
@@ -65,8 +66,11 @@ func Setup(db *gorm.DB, rdb *redis.Client, store storage.ObjectStorage, cfg *con
 	eventLog := logger.Named(rootLogger, "event")
 	eventBus := event.NewBus(10, eventLog)
 
-	// Initialize adapter factory.
-	adapterFactory := adapter.NewFactory()
+	// Initialize shared HTTP client pool for outbound requests to AstrBot instances.
+	httpClient := httpclient.NewPool(httpclient.DefaultPoolConfig())
+
+	// Initialize adapter factory with shared HTTP client.
+	adapterFactory := adapter.NewFactory(httpClient)
 
 	// Initialize repositories.
 	userRepo := repository.NewUserRepository(db)

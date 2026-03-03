@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"time"
 )
 
 // WebhookAdapter is a generic adapter for custom bot frameworks using HTTP webhooks.
@@ -15,11 +14,9 @@ type WebhookAdapter struct {
 	client *http.Client
 }
 
-// NewWebhookAdapter creates a new generic webhook adapter.
-func NewWebhookAdapter() *WebhookAdapter {
-	return &WebhookAdapter{
-		client: &http.Client{Timeout: 30 * time.Second},
-	}
+// NewWebhookAdapter creates a new generic webhook adapter using the provided shared HTTP client.
+func NewWebhookAdapter(client *http.Client) *WebhookAdapter {
+	return &WebhookAdapter{client: client}
 }
 
 func (a *WebhookAdapter) Framework() string {
