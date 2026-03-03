@@ -20,4 +20,8 @@ var (
 
 	ErrAvatarNotFound    = errors.New("avatar not found")
 	ErrAvatarBotConflict = errors.New("bot already bound to another avatar")
+
+	ErrInsufficientBalance = errors.New("insufficient wallet balance")
+	ErrInvalidAmount       = errors.New("invalid amount")
+	ErrWithdrawalTooSmall  = errors.New("withdrawal amount below minimum")
 )

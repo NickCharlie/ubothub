@@ -12,6 +12,7 @@ import (
 	"github.com/NickCharlie/ubothub/backend/internal/handler"
 	"github.com/NickCharlie/ubothub/backend/internal/middleware"
 	"github.com/NickCharlie/ubothub/backend/internal/moderation"
+	"github.com/NickCharlie/ubothub/backend/internal/payment"
 	"github.com/NickCharlie/ubothub/backend/internal/repository"
 	"github.com/NickCharlie/ubothub/backend/internal/service"
 	"github.com/NickCharlie/ubothub/backend/internal/storage"
@@ -135,6 +136,17 @@ func Setup(db *gorm.DB, rdb *redis.Client, store storage.ObjectStorage, cfg *con
 	adminSvc := service.NewAdminService(adminRepo, adminLog)
 	adminHandler := handler.NewAdminHandler(adminSvc)
 
+	// Initialize wallet, billing, and payment services.
+	walletRepo := repository.NewWalletRepository(db)
+	txnRepo := repository.NewTransactionRepository(db)
+	pricingRepo := repository.NewBotPricingRepository(db)
+	walletLog := logger.Named(rootLogger, "wallet")
+	walletSvc := service.NewWalletService(walletRepo, txnRepo, db, walletLog)
+	billingLog := logger.Named(rootLogger, "billing")
+	billingSvc := service.NewBillingService(pricingRepo, walletSvc, botRepo, billingLog)
+	paymentPvd := payment.NewNoopProvider()
+	walletHandler := handler.NewWalletHandler(walletSvc, billingSvc, paymentPvd)
+
 	// Public auth routes with stricter rate limiting.
 	authRoutes := r.Group("/api/v1/auth")
 	authRoutes.Use(middleware.RateLimiter(rdb, middleware.RateLimiterConfig{
@@ -216,6 +228,15 @@ func Setup(db *gorm.DB, rdb *redis.Client, store storage.ObjectStorage, cfg *con
 		authGroup.POST("/avatars/:id/bind-asset", avatarHandler.BindAsset)
 		authGroup.DELETE("/avatars/:id/assets/:assetId", avatarHandler.UnbindAsset)
 		authGroup.PUT("/avatars/:id/action-mapping", avatarHandler.UpdateActionMapping)
+
+		// Wallet and billing routes.
+		authGroup.GET("/wallet", walletHandler.GetWallet)
+		authGroup.POST("/wallet/topup", walletHandler.TopUp)
+		authGroup.GET("/wallet/transactions", walletHandler.Transactions)
+
+		// Bot pricing routes (creator configures monetization).
+		authGroup.GET("/bots/:id/pricing", walletHandler.GetBotPricing)
+		authGroup.PUT("/bots/:id/pricing", walletHandler.SetBotPricing)
 	}
 
 	// Admin-only API v1 route group.

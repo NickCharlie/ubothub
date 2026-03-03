@@ -212,6 +212,9 @@ func autoMigrate(db *gorm.DB) error {
 		&model.ActionTemplate{},
 		&model.LegalAgreement{},
 		&model.UserAgreementAcceptance{},
+		&model.Wallet{},
+		&model.Transaction{},
+		&model.BotPricing{},
 	)
 }
 

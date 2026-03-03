@@ -76,3 +76,13 @@ var (
 	ErrAdminCannotBanSelf   = &ErrCode{Code: 16002, Message: "cannot ban your own account", Status: http.StatusBadRequest}
 	ErrAdminCannotBanAdmin  = &ErrCode{Code: 16003, Message: "cannot ban another admin", Status: http.StatusForbidden}
 )
+
+// Billing and wallet error codes (17000-17999).
+var (
+	ErrInsufficientBalance = &ErrCode{Code: 17001, Message: "insufficient wallet balance", Status: http.StatusPaymentRequired}
+	ErrInvalidAmount       = &ErrCode{Code: 17002, Message: "invalid amount", Status: http.StatusBadRequest}
+	ErrWithdrawalTooSmall  = &ErrCode{Code: 17003, Message: "withdrawal amount below minimum", Status: http.StatusBadRequest}
+	ErrPaymentFailed       = &ErrCode{Code: 17004, Message: "payment processing failed", Status: http.StatusInternalServerError}
+	ErrOrderNotFound       = &ErrCode{Code: 17005, Message: "order not found", Status: http.StatusNotFound}
+	ErrBotNotPaid          = &ErrCode{Code: 17006, Message: "insufficient balance to use this bot", Status: http.StatusPaymentRequired}
+)
