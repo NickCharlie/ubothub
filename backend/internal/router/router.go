@@ -129,6 +129,12 @@ func Setup(db *gorm.DB, rdb *redis.Client, store storage.ObjectStorage, cfg *con
 	gatewayLog := logger.Named(rootLogger, "gateway")
 	gatewayHandler := handler.NewGatewayHandler(botSvc, adapterFactory, eventBus, moderator, gatewayLog)
 
+	// Initialize admin service and handler.
+	adminRepo := repository.NewAdminRepository(db)
+	adminLog := logger.Named(rootLogger, "admin")
+	adminSvc := service.NewAdminService(adminRepo, adminLog)
+	adminHandler := handler.NewAdminHandler(adminSvc)
+
 	// Public auth routes with stricter rate limiting.
 	authRoutes := r.Group("/api/v1/auth")
 	authRoutes.Use(middleware.RateLimiter(rdb, middleware.RateLimiterConfig{
@@ -217,7 +223,14 @@ func Setup(db *gorm.DB, rdb *redis.Client, store storage.ObjectStorage, cfg *con
 	adminGroup.Use(middleware.JWTAuth(tokenMgr, rdb))
 	adminGroup.Use(middleware.RequireRole("admin"))
 	{
-		_ = adminGroup
+		adminGroup.GET("/dashboard", adminHandler.Dashboard)
+		adminGroup.GET("/users", adminHandler.ListUsers)
+		adminGroup.PUT("/users/:id/ban", adminHandler.BanUser)
+		adminGroup.PUT("/users/:id/unban", adminHandler.UnbanUser)
+		adminGroup.GET("/bots", adminHandler.ListBots)
+		adminGroup.DELETE("/bots/:id", adminHandler.ForceDeleteBot)
+		adminGroup.GET("/assets", adminHandler.ListAssets)
+		adminGroup.GET("/logs", adminHandler.ListMessageLogs)
 	}
 
 	return r

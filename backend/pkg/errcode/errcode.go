@@ -69,3 +69,10 @@ var (
 var (
 	ErrContentViolation = &ErrCode{Code: 15001, Message: "content violates platform policies", Status: http.StatusForbidden}
 )
+
+// Admin error codes (16000-16999).
+var (
+	ErrAdminUserNotFound    = &ErrCode{Code: 16001, Message: "user not found", Status: http.StatusNotFound}
+	ErrAdminCannotBanSelf   = &ErrCode{Code: 16002, Message: "cannot ban your own account", Status: http.StatusBadRequest}
+	ErrAdminCannotBanAdmin  = &ErrCode{Code: 16003, Message: "cannot ban another admin", Status: http.StatusForbidden}
+)
