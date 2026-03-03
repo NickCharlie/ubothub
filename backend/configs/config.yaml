@@ -58,3 +58,17 @@ log:
   format: "console"          # console | json
   output: "stdout"           # stdout | file
   file_path: "logs/app.log"
+
+email:
+  smtp_host: ""              # e.g., smtpdm.aliyun.com for Alibaba DirectMail
+  smtp_port: 465
+  from_address: ""
+  from_name: "UBotHub"
+  password: ""
+  use_tls: true
+
+moderation:
+  enabled: false
+  access_key_id: ""
+  access_key_secret: ""
+  endpoint: ""               # e.g., https://green-cip.cn-shanghai.aliyuncs.com

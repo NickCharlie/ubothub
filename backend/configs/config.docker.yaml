@@ -1,0 +1,72 @@
+server:
+  mode: "release"
+  port: 8080
+  read_timeout: 10
+  write_timeout: 30
+  allowed_origins:
+    - "https://ubothub.com"
+    - "https://www.ubothub.com"
+  frontend_url: "https://ubothub.com"
+
+database:
+  host: "postgres"
+  port: 5432
+  user: "ubothub"
+  password: "ubothub_dev"
+  dbname: "ubothub"
+  sslmode: "disable"
+  max_idle_conns: 10
+  max_open_conns: 100
+  conn_max_lifetime: 3600
+
+redis:
+  addr: "redis:6379"
+  password: "ubothub_dev"
+  db: 0
+  pool_size: 100
+
+storage:
+  provider: "minio"
+  minio:
+    endpoint: "minio:9000"
+    access_key: "minioadmin"
+    secret_key: "minioadmin123"
+    use_ssl: false
+    bucket: "ubothub-assets"
+  aliyun_oss:
+    endpoint: ""
+    access_key_id: ""
+    access_key_secret: ""
+    bucket: ""
+    cdn_domain: ""
+
+jwt:
+  secret: "ubothub-dev-secret-key-change-in-production-min-256bit"
+  access_token_expire: 15
+  refresh_token_expire: 10080
+  issuer: "ubothub"
+
+queue:
+  redis_addr: "redis:6379"
+  redis_password: "ubothub_dev"
+  concurrency: 10
+
+log:
+  level: "info"
+  format: "json"
+  output: "stdout"
+  file_path: ""
+
+email:
+  smtp_host: ""
+  smtp_port: 465
+  from_address: ""
+  from_name: "UBotHub"
+  password: ""
+  use_tls: true
+
+moderation:
+  enabled: false
+  access_key_id: ""
+  access_key_secret: ""
+  endpoint: ""

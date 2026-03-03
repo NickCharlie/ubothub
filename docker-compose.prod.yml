@@ -1,0 +1,122 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: ubothub-postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-ubothub}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ubothub_dev}
+      POSTGRES_DB: ${POSTGRES_DB:-ubothub}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ubothub}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ubothub
+
+  redis:
+    image: redis:7-alpine
+    container_name: ubothub-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: redis-server --requirepass ${REDIS_PASSWORD:-ubothub_dev} --maxmemory 512mb --maxmemory-policy allkeys-lru --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-ubothub_dev}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ubothub
+
+  minio:
+    image: minio/minio:latest
+    container_name: ubothub-minio
+    restart: unless-stopped
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin123}
+    volumes:
+      - minio_data:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ubothub
+
+  backend-api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: ubothub-api
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    command: ["/app/server", "-mode", "api"]
+    volumes:
+      - ./backend/configs/config.docker.yaml:/app/configs/config.yaml:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    networks:
+      - ubothub
+
+  backend-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: ubothub-worker
+    restart: unless-stopped
+    command: ["/app/server", "-mode", "worker"]
+    volumes:
+      - ./backend/configs/config.docker.yaml:/app/configs/config.yaml:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - ubothub
+
+  asynqmon:
+    image: hibiken/asynqmon:latest
+    container_name: ubothub-asynqmon
+    restart: unless-stopped
+    ports:
+      - "8081:8080"
+    environment:
+      REDIS_ADDR: redis:6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-ubothub_dev}
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - ubothub
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:
+
+networks:
+  ubothub:
+    driver: bridge
