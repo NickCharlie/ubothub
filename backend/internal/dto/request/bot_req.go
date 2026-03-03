@@ -7,6 +7,7 @@ type CreateBotRequest struct {
 	Framework   string `json:"framework" binding:"required,oneof=astrbot nonebot wechaty koishi custom"`
 	WebhookURL  string `json:"webhook_url" binding:"omitempty,url,max=2048"`
 	Config      string `json:"config" binding:"omitempty"`
+	Visibility  string `json:"visibility" binding:"omitempty,oneof=public private"`
 }
 
 // UpdateBotRequest represents the bot update request payload.
@@ -15,6 +16,7 @@ type UpdateBotRequest struct {
 	Description string `json:"description" binding:"omitempty,max=2048"`
 	WebhookURL  string `json:"webhook_url" binding:"omitempty,url,max=2048"`
 	Config      string `json:"config" binding:"omitempty"`
+	Visibility  string `json:"visibility" binding:"omitempty,oneof=public private"`
 }
 
 // ListBotRequest represents pagination parameters for bot listing.

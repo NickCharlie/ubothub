@@ -44,7 +44,7 @@ func (h *BotHandler) Create(c *gin.Context) {
 	userID := c.GetString("user_id")
 	bot, accessToken, err := h.botSvc.CreateBot(
 		c.Request.Context(), userID,
-		req.Name, req.Description, req.Framework, req.WebhookURL, req.Config,
+		req.Name, req.Description, req.Framework, req.WebhookURL, req.Config, req.Visibility,
 	)
 	if err != nil {
 		if errors.Is(err, service.ErrBotLimitExceeded) {
@@ -56,7 +56,7 @@ func (h *BotHandler) Create(c *gin.Context) {
 	}
 
 	resp.OK(c, response.BotWithTokenResponse{
-		BotResponse: toBotResponse(bot),
+		BotResponse: h.toBotResponse(bot, true),
 		AccessToken: accessToken,
 	})
 }
@@ -94,7 +94,7 @@ func (h *BotHandler) List(c *gin.Context) {
 
 	items := make([]response.BotResponse, 0, len(bots))
 	for _, bot := range bots {
-		items = append(items, toBotResponse(bot))
+		items = append(items, h.toBotResponse(bot, true))
 	}
 
 	resp.OKPaged(c, items, total, req.Page, req.PageSize)
@@ -124,12 +124,12 @@ func (h *BotHandler) Get(c *gin.Context) {
 		return
 	}
 
-	resp.OK(c, toBotResponse(bot))
+	resp.OK(c, h.toBotResponse(bot, true))
 }
 
 // Update handles PUT /api/v1/bots/:id.
 // @Summary Update bot
-// @Description Update bot name, description, webhook URL, or config.
+// @Description Update bot name, description, webhook URL, config, or visibility.
 // @Tags Bot
 // @Accept json
 // @Produce json
@@ -151,7 +151,7 @@ func (h *BotHandler) Update(c *gin.Context) {
 
 	bot, err := h.botSvc.UpdateBot(
 		c.Request.Context(), botID, userID,
-		req.Name, req.Description, req.WebhookURL, req.Config,
+		req.Name, req.Description, req.WebhookURL, req.Config, req.Visibility,
 	)
 	if err != nil {
 		if errors.Is(err, service.ErrBotNotFound) {
@@ -162,7 +162,7 @@ func (h *BotHandler) Update(c *gin.Context) {
 		return
 	}
 
-	resp.OK(c, toBotResponse(bot))
+	resp.OK(c, h.toBotResponse(bot, true))
 }
 
 // Delete handles DELETE /api/v1/bots/:id.
@@ -219,7 +219,8 @@ func (h *BotHandler) RegenerateToken(c *gin.Context) {
 }
 
 // toBotResponse converts a model.Bot to a response DTO.
-func toBotResponse(bot *model.Bot) response.BotResponse {
+// isOwner controls whether sensitive config fields are masked or stripped.
+func (h *BotHandler) toBotResponse(bot *model.Bot, isOwner bool) response.BotResponse {
 	return response.BotResponse{
 		ID:           bot.ID,
 		Name:         bot.Name,
@@ -228,7 +229,7 @@ func toBotResponse(bot *model.Bot) response.BotResponse {
 		Visibility:   bot.Visibility,
 		Status:       bot.Status,
 		WebhookURL:   bot.WebhookURL,
-		Config:       bot.Config,
+		Config:       h.botSvc.MaskBotConfig(bot.Config, isOwner),
 		LastActiveAt: bot.LastActiveAt,
 		CreatedAt:    bot.CreatedAt.Format("2006-01-02T15:04:05Z"),
 		UpdatedAt:    bot.UpdatedAt.Format("2006-01-02T15:04:05Z"),
@@ -266,7 +267,7 @@ func (h *BotHandler) ListPublic(c *gin.Context) {
 
 	items := make([]response.BotResponse, 0, len(bots))
 	for _, bot := range bots {
-		items = append(items, toBotResponse(bot))
+		items = append(items, h.toBotResponse(bot, false))
 	}
 
 	resp.OKPaged(c, items, total, req.Page, req.PageSize)
@@ -294,5 +295,5 @@ func (h *BotHandler) GetPublic(c *gin.Context) {
 		return
 	}
 
-	resp.OK(c, toBotResponse(bot))
+	resp.OK(c, h.toBotResponse(bot, false))
 }

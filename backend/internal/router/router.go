@@ -20,6 +20,7 @@ import (
 	"github.com/NickCharlie/ubothub/backend/internal/service"
 	"github.com/NickCharlie/ubothub/backend/internal/storage"
 	"github.com/NickCharlie/ubothub/backend/internal/ws"
+	"github.com/NickCharlie/ubothub/backend/pkg/crypto"
 	"github.com/NickCharlie/ubothub/backend/pkg/email"
 	"github.com/NickCharlie/ubothub/backend/pkg/httpclient"
 	"github.com/NickCharlie/ubothub/backend/pkg/logger"
@@ -100,6 +101,16 @@ func Setup(ctx context.Context, db *gorm.DB, rdb *redis.Client, store storage.Ob
 		Endpoint:        cfg.Moderation.Endpoint,
 	}, moderationLog)
 
+	// Initialize config encryptor for sensitive bot configuration fields.
+	var encryptor *crypto.Encryptor
+	if cfg.Server.EncryptionKey != "" {
+		var err error
+		encryptor, err = crypto.NewEncryptor(cfg.Server.EncryptionKey)
+		if err != nil {
+			rootLogger.Fatal("failed to initialize config encryptor", zap.Error(err))
+		}
+	}
+
 	// Initialize services.
 	authLog := logger.Named(rootLogger, "auth")
 	userLog := logger.Named(rootLogger, "handler")
@@ -107,7 +118,7 @@ func Setup(ctx context.Context, db *gorm.DB, rdb *redis.Client, store storage.Ob
 	assetLog := logger.Named(rootLogger, "asset")
 	authSvc := service.NewAuthService(userRepo, tokenMgr, rdb, authLog)
 	userSvc := service.NewUserService(userRepo, userLog)
-	botSvc := service.NewBotService(botRepo, botLog)
+	botSvc := service.NewBotService(botRepo, encryptor, botLog)
 	assetSvc := service.NewAssetService(assetRepo, store, bucket, assetLog)
 	avatarLog := logger.Named(rootLogger, "avatar")
 	avatarSvc := service.NewAvatarService(avatarRepo, botRepo, avatarLog)
