@@ -20,7 +20,13 @@ func NewAdminHandler(adminSvc *service.AdminService) *AdminHandler {
 }
 
 // Dashboard handles GET /api/v1/admin/dashboard.
-// Returns system-wide statistics for the admin panel.
+// @Summary Admin dashboard
+// @Description Returns system-wide statistics for the admin panel.
+// @Tags Admin
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} response.CommonResponse
+// @Router /admin/dashboard [get]
 func (h *AdminHandler) Dashboard(c *gin.Context) {
 	stats, err := h.adminSvc.GetDashboard(c.Request.Context())
 	if err != nil {
@@ -31,7 +37,17 @@ func (h *AdminHandler) Dashboard(c *gin.Context) {
 }
 
 // ListUsers handles GET /api/v1/admin/users.
-// Returns paginated user list with optional status and role filters.
+// @Summary List all users
+// @Description Returns paginated user list with optional status and role filters.
+// @Tags Admin
+// @Produce json
+// @Security BearerAuth
+// @Param page query int false "Page number" default(1)
+// @Param page_size query int false "Page size" default(20)
+// @Param status query string false "Filter by status"
+// @Param role query string false "Filter by role"
+// @Success 200 {object} response.CommonResponse
+// @Router /admin/users [get]
 func (h *AdminHandler) ListUsers(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
@@ -47,7 +63,15 @@ func (h *AdminHandler) ListUsers(c *gin.Context) {
 }
 
 // BanUser handles PUT /api/v1/admin/users/:id/ban.
-// Sets the target user's status to "banned".
+// @Summary Ban user
+// @Description Sets the target user's status to "banned".
+// @Tags Admin
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "User ID"
+// @Success 200 {object} response.CommonResponse
+// @Failure 400 {object} response.CommonResponse
+// @Router /admin/users/{id}/ban [put]
 func (h *AdminHandler) BanUser(c *gin.Context) {
 	userID := c.Param("id")
 	if userID == "" {
@@ -63,7 +87,15 @@ func (h *AdminHandler) BanUser(c *gin.Context) {
 }
 
 // UnbanUser handles PUT /api/v1/admin/users/:id/unban.
-// Restores a banned user's status to "active".
+// @Summary Unban user
+// @Description Restores a banned user's status to "active".
+// @Tags Admin
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "User ID"
+// @Success 200 {object} response.CommonResponse
+// @Failure 400 {object} response.CommonResponse
+// @Router /admin/users/{id}/unban [put]
 func (h *AdminHandler) UnbanUser(c *gin.Context) {
 	userID := c.Param("id")
 	if userID == "" {
@@ -79,7 +111,17 @@ func (h *AdminHandler) UnbanUser(c *gin.Context) {
 }
 
 // ListBots handles GET /api/v1/admin/bots.
-// Returns paginated bot list with optional status and framework filters.
+// @Summary List all bots (admin)
+// @Description Returns paginated bot list with optional status and framework filters.
+// @Tags Admin
+// @Produce json
+// @Security BearerAuth
+// @Param page query int false "Page number" default(1)
+// @Param page_size query int false "Page size" default(20)
+// @Param status query string false "Filter by status"
+// @Param framework query string false "Filter by framework"
+// @Success 200 {object} response.CommonResponse
+// @Router /admin/bots [get]
 func (h *AdminHandler) ListBots(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
@@ -95,7 +137,15 @@ func (h *AdminHandler) ListBots(c *gin.Context) {
 }
 
 // ForceDeleteBot handles DELETE /api/v1/admin/bots/:id.
-// Permanently removes a bot (bypasses soft delete).
+// @Summary Force delete bot (admin)
+// @Description Permanently removes a bot (bypasses soft delete).
+// @Tags Admin
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Bot ID"
+// @Success 200 {object} response.CommonResponse
+// @Failure 400 {object} response.CommonResponse
+// @Router /admin/bots/{id} [delete]
 func (h *AdminHandler) ForceDeleteBot(c *gin.Context) {
 	botID := c.Param("id")
 	if botID == "" {
@@ -111,7 +161,17 @@ func (h *AdminHandler) ForceDeleteBot(c *gin.Context) {
 }
 
 // ListAssets handles GET /api/v1/admin/assets.
-// Returns paginated asset list with optional category and status filters.
+// @Summary List all assets (admin)
+// @Description Returns paginated asset list with optional category and status filters.
+// @Tags Admin
+// @Produce json
+// @Security BearerAuth
+// @Param page query int false "Page number" default(1)
+// @Param page_size query int false "Page size" default(20)
+// @Param category query string false "Filter by category"
+// @Param status query string false "Filter by status"
+// @Success 200 {object} response.CommonResponse
+// @Router /admin/assets [get]
 func (h *AdminHandler) ListAssets(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))
@@ -127,7 +187,16 @@ func (h *AdminHandler) ListAssets(c *gin.Context) {
 }
 
 // ListMessageLogs handles GET /api/v1/admin/logs.
-// Returns paginated message logs with optional bot_id filter.
+// @Summary List message logs (admin)
+// @Description Returns paginated message logs with optional bot_id filter.
+// @Tags Admin
+// @Produce json
+// @Security BearerAuth
+// @Param page query int false "Page number" default(1)
+// @Param page_size query int false "Page size" default(20)
+// @Param bot_id query string false "Filter by bot ID"
+// @Success 200 {object} response.CommonResponse
+// @Router /admin/logs [get]
 func (h *AdminHandler) ListMessageLogs(c *gin.Context) {
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	pageSize, _ := strconv.Atoi(c.DefaultQuery("page_size", "20"))

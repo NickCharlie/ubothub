@@ -14,6 +14,9 @@ type Response struct {
 	Data    interface{} `json:"data,omitempty"`
 }
 
+// CommonResponse is an alias for Response used in Swagger documentation.
+type CommonResponse = Response
+
 // PagedData represents paginated data with metadata.
 type PagedData struct {
 	Items      interface{} `json:"items"`

@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/NickCharlie/ubothub/backend/internal/config"
+	_ "github.com/NickCharlie/ubothub/backend/docs" // swagger generated docs
 	"github.com/NickCharlie/ubothub/backend/internal/model"
 	"github.com/NickCharlie/ubothub/backend/internal/queue"
 	"github.com/NickCharlie/ubothub/backend/internal/queue/tasks"
@@ -30,6 +31,26 @@ import (
 )
 
 var mode = flag.String("mode", "all", "Run mode: api, worker, all")
+
+// @title UBotHub API
+// @version 1.0
+// @description Open platform for integrating chatbots with 3D/Live2D avatar characters.
+// @termsOfService https://ubothub.com/terms
+
+// @contact.name UBotHub Team
+// @contact.url https://github.com/NickCharlie/ubothub
+// @contact.email support@ubothub.com
+
+// @license.name Apache 2.0
+// @license.url http://www.apache.org/licenses/LICENSE-2.0.html
+
+// @host api.ubothub.com
+// @BasePath /api/v1
+
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
+// @description Enter "Bearer {token}" to authenticate.
 
 func main() {
 	flag.Parse()

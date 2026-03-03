@@ -23,6 +23,17 @@ func NewBotHandler(botSvc *service.BotService) *BotHandler {
 }
 
 // Create handles POST /api/v1/bots.
+// @Summary Create bot
+// @Description Create a new bot with the given configuration.
+// @Tags Bot
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param body body request.CreateBotRequest true "Bot creation payload"
+// @Success 200 {object} response.CommonResponse{data=response.BotWithTokenResponse}
+// @Failure 400 {object} response.CommonResponse
+// @Failure 409 {object} response.CommonResponse
+// @Router /bots [post]
 func (h *BotHandler) Create(c *gin.Context) {
 	var req request.CreateBotRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -51,6 +62,15 @@ func (h *BotHandler) Create(c *gin.Context) {
 }
 
 // List handles GET /api/v1/bots.
+// @Summary List user's bots
+// @Description Returns paginated list of bots owned by the current user.
+// @Tags Bot
+// @Produce json
+// @Security BearerAuth
+// @Param page query int false "Page number" default(1)
+// @Param page_size query int false "Page size" default(20)
+// @Success 200 {object} response.CommonResponse
+// @Router /bots [get]
 func (h *BotHandler) List(c *gin.Context) {
 	var req request.ListBotRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
@@ -81,6 +101,15 @@ func (h *BotHandler) List(c *gin.Context) {
 }
 
 // Get handles GET /api/v1/bots/:id.
+// @Summary Get bot details
+// @Description Returns detailed information about a specific bot.
+// @Tags Bot
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Bot ID"
+// @Success 200 {object} response.CommonResponse{data=response.BotResponse}
+// @Failure 404 {object} response.CommonResponse
+// @Router /bots/{id} [get]
 func (h *BotHandler) Get(c *gin.Context) {
 	botID := c.Param("id")
 	userID := c.GetString("user_id")
@@ -99,6 +128,17 @@ func (h *BotHandler) Get(c *gin.Context) {
 }
 
 // Update handles PUT /api/v1/bots/:id.
+// @Summary Update bot
+// @Description Update bot name, description, webhook URL, or config.
+// @Tags Bot
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Bot ID"
+// @Param body body request.UpdateBotRequest true "Bot update payload"
+// @Success 200 {object} response.CommonResponse{data=response.BotResponse}
+// @Failure 404 {object} response.CommonResponse
+// @Router /bots/{id} [put]
 func (h *BotHandler) Update(c *gin.Context) {
 	var req request.UpdateBotRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -126,6 +166,15 @@ func (h *BotHandler) Update(c *gin.Context) {
 }
 
 // Delete handles DELETE /api/v1/bots/:id.
+// @Summary Delete bot
+// @Description Delete a bot owned by the current user.
+// @Tags Bot
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Bot ID"
+// @Success 200 {object} response.CommonResponse
+// @Failure 404 {object} response.CommonResponse
+// @Router /bots/{id} [delete]
 func (h *BotHandler) Delete(c *gin.Context) {
 	botID := c.Param("id")
 	userID := c.GetString("user_id")
@@ -143,6 +192,15 @@ func (h *BotHandler) Delete(c *gin.Context) {
 }
 
 // RegenerateToken handles POST /api/v1/bots/:id/regenerate-token.
+// @Summary Regenerate bot access token
+// @Description Regenerate the access token for a bot. The old token is invalidated.
+// @Tags Bot
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Bot ID"
+// @Success 200 {object} response.CommonResponse
+// @Failure 404 {object} response.CommonResponse
+// @Router /bots/{id}/regenerate-token [post]
 func (h *BotHandler) RegenerateToken(c *gin.Context) {
 	botID := c.Param("id")
 	userID := c.GetString("user_id")
@@ -178,7 +236,14 @@ func toBotResponse(bot *model.Bot) response.BotResponse {
 }
 
 // ListPublic handles GET /api/v1/plaza/bots.
-// Returns public bots for the bot plaza (no auth required).
+// @Summary List public bots
+// @Description Returns paginated list of public bots for the bot plaza.
+// @Tags Plaza
+// @Produce json
+// @Param page query int false "Page number" default(1)
+// @Param page_size query int false "Page size" default(20)
+// @Success 200 {object} response.CommonResponse
+// @Router /plaza/bots [get]
 func (h *BotHandler) ListPublic(c *gin.Context) {
 	var req request.ListBotRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
@@ -208,7 +273,14 @@ func (h *BotHandler) ListPublic(c *gin.Context) {
 }
 
 // GetPublic handles GET /api/v1/plaza/bots/:id.
-// Returns a public bot's details (no auth required).
+// @Summary Get public bot details
+// @Description Returns a public bot's details for the bot plaza.
+// @Tags Plaza
+// @Produce json
+// @Param id path string true "Bot ID"
+// @Success 200 {object} response.CommonResponse{data=response.BotResponse}
+// @Failure 404 {object} response.CommonResponse
+// @Router /plaza/bots/{id} [get]
 func (h *BotHandler) GetPublic(c *gin.Context) {
 	botID := c.Param("id")
 

@@ -19,6 +19,14 @@ func NewUserHandler(userSvc *service.UserService) *UserHandler {
 }
 
 // GetMe handles GET /api/v1/users/me.
+// @Summary Get current user profile
+// @Description Returns the authenticated user's profile information.
+// @Tags User
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} response.CommonResponse
+// @Failure 401 {object} response.CommonResponse
+// @Router /users/me [get]
 func (h *UserHandler) GetMe(c *gin.Context) {
 	userID := c.GetString("user_id")
 	if userID == "" {
@@ -46,6 +54,17 @@ func (h *UserHandler) GetMe(c *gin.Context) {
 }
 
 // UpdateMe handles PUT /api/v1/users/me.
+// @Summary Update user profile
+// @Description Update the current user's display name and avatar URL.
+// @Tags User
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param body body request.UpdateProfileRequest true "Profile update payload"
+// @Success 200 {object} response.CommonResponse
+// @Failure 400 {object} response.CommonResponse
+// @Failure 401 {object} response.CommonResponse
+// @Router /users/me [put]
 func (h *UserHandler) UpdateMe(c *gin.Context) {
 	userID := c.GetString("user_id")
 	if userID == "" {
@@ -77,6 +96,17 @@ func (h *UserHandler) UpdateMe(c *gin.Context) {
 }
 
 // ChangePassword handles PUT /api/v1/users/me/password.
+// @Summary Change password
+// @Description Change the current user's password.
+// @Tags User
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param body body request.ChangePasswordRequest true "Password change payload"
+// @Success 200 {object} response.CommonResponse
+// @Failure 400 {object} response.CommonResponse
+// @Failure 401 {object} response.CommonResponse
+// @Router /users/me/password [put]
 func (h *UserHandler) ChangePassword(c *gin.Context) {
 	userID := c.GetString("user_id")
 	if userID == "" {

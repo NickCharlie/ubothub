@@ -27,15 +27,29 @@ func NewPaymentHandler(registry *payment.Registry, walletSvc *service.WalletServ
 }
 
 // WechatNotify handles POST /api/v1/payment/notify/wechat.
-// Receives and processes WeChat Pay V3 async payment notifications.
-// Implements double verification: signature check + order query.
+// @Summary WeChat payment notification
+// @Description Receives WeChat Pay V3 async payment notifications with double verification.
+// @Tags Payment
+// @Accept json
+// @Produce json
+// @Success 200 {object} object
+// @Failure 400 {string} string
+// @Failure 403 {string} string
+// @Router /payment/notify/wechat [post]
 func (h *PaymentHandler) WechatNotify(c *gin.Context) {
 	h.handleNotify(c, "wechat")
 }
 
 // AlipayNotify handles POST /api/v1/payment/notify/alipay.
-// Receives and processes Alipay async payment notifications.
-// Implements double verification: signature check + order query.
+// @Summary Alipay payment notification
+// @Description Receives Alipay async payment notifications with double verification.
+// @Tags Payment
+// @Accept json
+// @Produce plain
+// @Success 200 {string} string "success"
+// @Failure 400 {string} string
+// @Failure 403 {string} string
+// @Router /payment/notify/alipay [post]
 func (h *PaymentHandler) AlipayNotify(c *gin.Context) {
 	h.handleNotify(c, "alipay")
 }

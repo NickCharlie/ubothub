@@ -50,8 +50,15 @@ func NewWSHandler(hub *ws.Hub, tokenMgr *token.Manager, allowedOrigins []string,
 }
 
 // Connect handles GET /api/v1/ws.
-// Upgrades the HTTP connection to WebSocket after JWT validation.
-// The client must provide the JWT token as a query parameter: ?token=xxx&bot_id=xxx.
+// @Summary WebSocket connection
+// @Description Upgrades HTTP to WebSocket after JWT validation via query parameter.
+// @Tags WebSocket
+// @Param token query string true "JWT access token"
+// @Param bot_id query string true "Bot ID to subscribe"
+// @Success 101 {string} string "Switching Protocols"
+// @Failure 400 {object} object "Bad request"
+// @Failure 401 {object} object "Unauthorized"
+// @Router /ws [get]
 func (h *WSHandler) Connect(c *gin.Context) {
 	tokenStr := c.Query("token")
 	if tokenStr == "" {
@@ -98,7 +105,13 @@ func (h *WSHandler) Connect(c *gin.Context) {
 }
 
 // Metrics handles GET /api/v1/ws/metrics.
-// Returns real-time WebSocket connection statistics.
+// @Summary WebSocket metrics
+// @Description Returns real-time WebSocket connection statistics.
+// @Tags Admin
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} object "Metrics snapshot"
+// @Router /admin/ws/metrics [get]
 func (h *WSHandler) Metrics(c *gin.Context) {
 	snapshot := h.hub.GetMetrics().Snapshot()
 	c.JSON(http.StatusOK, gin.H{

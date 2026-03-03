@@ -42,7 +42,16 @@ func NewGatewayHandler(
 }
 
 // Webhook handles POST /api/v1/gateway/webhook/:token.
-// Bot frameworks send messages to this endpoint using the bot's access token.
+// @Summary Bot webhook endpoint
+// @Description Receives messages from bot frameworks using the bot's access token in URL.
+// @Tags Gateway
+// @Accept json
+// @Produce json
+// @Param token path string true "Bot access token"
+// @Success 200 {object} response.CommonResponse
+// @Failure 400 {object} response.CommonResponse
+// @Failure 403 {object} response.CommonResponse
+// @Router /gateway/webhook/{token} [post]
 func (h *GatewayHandler) Webhook(c *gin.Context) {
 	accessToken := c.Param("token")
 	if accessToken == "" {
@@ -121,7 +130,16 @@ func (h *GatewayHandler) Webhook(c *gin.Context) {
 }
 
 // Message handles POST /api/v1/gateway/message.
-// Authenticated via Bearer token in Authorization header.
+// @Summary Bot message endpoint
+// @Description Receives messages via Bearer token authentication in header.
+// @Tags Gateway
+// @Accept json
+// @Produce json
+// @Param Authorization header string true "Bearer {bot_access_token}"
+// @Success 200 {object} response.CommonResponse
+// @Failure 400 {object} response.CommonResponse
+// @Failure 403 {object} response.CommonResponse
+// @Router /gateway/message [post]
 func (h *GatewayHandler) Message(c *gin.Context) {
 	authHeader := c.GetHeader("Authorization")
 	var accessToken string

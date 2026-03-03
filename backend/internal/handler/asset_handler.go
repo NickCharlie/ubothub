@@ -24,6 +24,16 @@ func NewAssetHandler(assetSvc *service.AssetService) *AssetHandler {
 }
 
 // PresignedUpload handles POST /api/v1/assets/upload/presigned.
+// @Summary Get presigned upload URL
+// @Description Generate a presigned URL for client-side asset upload.
+// @Tags Asset
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param body body request.PresignedUploadRequest true "Upload request"
+// @Success 200 {object} response.CommonResponse{data=response.PresignedUploadResponse}
+// @Failure 400 {object} response.CommonResponse
+// @Router /assets/upload/presigned [post]
 func (h *AssetHandler) PresignedUpload(c *gin.Context) {
 	var req request.PresignedUploadRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -48,6 +58,16 @@ func (h *AssetHandler) PresignedUpload(c *gin.Context) {
 }
 
 // CompleteUpload handles POST /api/v1/assets/upload/complete.
+// @Summary Complete asset upload
+// @Description Register a completed upload as an asset in the system.
+// @Tags Asset
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param body body request.CompleteUploadRequest true "Upload completion payload"
+// @Success 200 {object} response.CommonResponse{data=response.AssetResponse}
+// @Failure 400 {object} response.CommonResponse
+// @Router /assets/upload/complete [post]
 func (h *AssetHandler) CompleteUpload(c *gin.Context) {
 	var req request.CompleteUploadRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -78,6 +98,18 @@ func (h *AssetHandler) CompleteUpload(c *gin.Context) {
 }
 
 // List handles GET /api/v1/assets.
+// @Summary List user's assets
+// @Description Returns paginated list of assets owned by the current user.
+// @Tags Asset
+// @Produce json
+// @Security BearerAuth
+// @Param page query int false "Page number" default(1)
+// @Param page_size query int false "Page size" default(20)
+// @Param category query string false "Filter by category"
+// @Param format query string false "Filter by format"
+// @Param status query string false "Filter by status"
+// @Success 200 {object} response.CommonResponse
+// @Router /assets [get]
 func (h *AssetHandler) List(c *gin.Context) {
 	var req request.ListAssetRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
@@ -111,6 +143,17 @@ func (h *AssetHandler) List(c *gin.Context) {
 }
 
 // ListPublic handles GET /api/v1/assets/public.
+// @Summary List public assets
+// @Description Returns paginated list of public assets with optional search.
+// @Tags Asset
+// @Produce json
+// @Param page query int false "Page number" default(1)
+// @Param page_size query int false "Page size" default(20)
+// @Param category query string false "Filter by category"
+// @Param format query string false "Filter by format"
+// @Param search query string false "Search keyword"
+// @Success 200 {object} response.CommonResponse
+// @Router /assets/public [get]
 func (h *AssetHandler) ListPublic(c *gin.Context) {
 	var req request.ListAssetRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
@@ -143,6 +186,15 @@ func (h *AssetHandler) ListPublic(c *gin.Context) {
 }
 
 // Get handles GET /api/v1/assets/:id.
+// @Summary Get asset details
+// @Description Returns detailed information about a specific asset.
+// @Tags Asset
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Asset ID"
+// @Success 200 {object} response.CommonResponse{data=response.AssetResponse}
+// @Failure 404 {object} response.CommonResponse
+// @Router /assets/{id} [get]
 func (h *AssetHandler) Get(c *gin.Context) {
 	assetID := c.Param("id")
 	userID := c.GetString("user_id")
@@ -157,6 +209,17 @@ func (h *AssetHandler) Get(c *gin.Context) {
 }
 
 // Update handles PUT /api/v1/assets/:id.
+// @Summary Update asset metadata
+// @Description Update asset name, description, visibility, or tags.
+// @Tags Asset
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Asset ID"
+// @Param body body request.UpdateAssetRequest true "Asset update payload"
+// @Success 200 {object} response.CommonResponse{data=response.AssetResponse}
+// @Failure 404 {object} response.CommonResponse
+// @Router /assets/{id} [put]
 func (h *AssetHandler) Update(c *gin.Context) {
 	var req request.UpdateAssetRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -188,6 +251,15 @@ func (h *AssetHandler) Update(c *gin.Context) {
 }
 
 // Delete handles DELETE /api/v1/assets/:id.
+// @Summary Delete asset
+// @Description Delete an asset owned by the current user.
+// @Tags Asset
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Asset ID"
+// @Success 200 {object} response.CommonResponse
+// @Failure 404 {object} response.CommonResponse
+// @Router /assets/{id} [delete]
 func (h *AssetHandler) Delete(c *gin.Context) {
 	assetID := c.Param("id")
 	userID := c.GetString("user_id")
@@ -201,6 +273,15 @@ func (h *AssetHandler) Delete(c *gin.Context) {
 }
 
 // Download handles GET /api/v1/assets/:id/download.
+// @Summary Get asset download URL
+// @Description Returns a presigned download URL for the asset.
+// @Tags Asset
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Asset ID"
+// @Success 200 {object} response.CommonResponse
+// @Failure 404 {object} response.CommonResponse
+// @Router /assets/{id}/download [get]
 func (h *AssetHandler) Download(c *gin.Context) {
 	assetID := c.Param("id")
 	userID := c.GetString("user_id")
@@ -215,6 +296,15 @@ func (h *AssetHandler) Download(c *gin.Context) {
 }
 
 // Thumbnail handles GET /api/v1/assets/:id/thumbnail.
+// @Summary Get asset thumbnail URL
+// @Description Returns a presigned URL for the asset's thumbnail.
+// @Tags Asset
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Asset ID"
+// @Success 200 {object} response.CommonResponse
+// @Failure 404 {object} response.CommonResponse
+// @Router /assets/{id}/thumbnail [get]
 func (h *AssetHandler) Thumbnail(c *gin.Context) {
 	assetID := c.Param("id")
 	userID := c.GetString("user_id")

@@ -58,7 +58,7 @@ lint: lint-backend lint-frontend
 
 # Code generation
 swagger:
-	cd backend && swag init -g cmd/server/main.go -o docs
+	cd backend && swag init -g cmd/server/main.go -o docs --parseDependency --parseInternal
 
 wire:
 	cd backend && wire ./...

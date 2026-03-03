@@ -27,7 +27,14 @@ func NewWalletHandler(walletSvc *service.WalletService, billingSvc *service.Bill
 }
 
 // GetWallet handles GET /api/v1/wallet.
-// Returns the current user's wallet balance and details.
+// @Summary Get wallet balance
+// @Description Returns the current user's wallet balance and details.
+// @Tags Wallet
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} response.CommonResponse
+// @Failure 401 {object} response.CommonResponse
+// @Router /wallet [get]
 func (h *WalletHandler) GetWallet(c *gin.Context) {
 	userID := c.GetString("user_id")
 	wallet, err := h.walletSvc.GetOrCreateWallet(c.Request.Context(), userID)
@@ -45,7 +52,16 @@ func (h *WalletHandler) GetWallet(c *gin.Context) {
 }
 
 // TopUp handles POST /api/v1/wallet/topup.
-// Initiates a payment order for wallet top-up.
+// @Summary Initiate wallet top-up
+// @Description Create a payment order for wallet top-up via specified channel.
+// @Tags Wallet
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param body body object true "Top-up payload (amount, channel)"
+// @Success 200 {object} response.CommonResponse
+// @Failure 400 {object} response.CommonResponse
+// @Router /wallet/topup [post]
 func (h *WalletHandler) TopUp(c *gin.Context) {
 	userID := c.GetString("user_id")
 
@@ -87,7 +103,16 @@ func (h *WalletHandler) TopUp(c *gin.Context) {
 }
 
 // Transactions handles GET /api/v1/wallet/transactions.
-// Returns paginated transaction history for the current user.
+// @Summary Get transaction history
+// @Description Returns paginated transaction history for the current user.
+// @Tags Wallet
+// @Produce json
+// @Security BearerAuth
+// @Param page query int false "Page number" default(1)
+// @Param page_size query int false "Page size" default(20)
+// @Param type query string false "Filter by transaction type"
+// @Success 200 {object} response.CommonResponse
+// @Router /wallet/transactions [get]
 func (h *WalletHandler) Transactions(c *gin.Context) {
 	userID := c.GetString("user_id")
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
@@ -103,7 +128,17 @@ func (h *WalletHandler) Transactions(c *gin.Context) {
 }
 
 // SetBotPricing handles PUT /api/v1/bots/:id/pricing.
-// Configures the pricing model for a bot (creator only).
+// @Summary Set bot pricing
+// @Description Configure the pricing model for a bot (creator only).
+// @Tags Billing
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Bot ID"
+// @Param body body object true "Pricing payload (mode, price_per_call, monthly_price, free_calls_per_day)"
+// @Success 200 {object} response.CommonResponse
+// @Failure 400 {object} response.CommonResponse
+// @Router /bots/{id}/pricing [put]
 func (h *WalletHandler) SetBotPricing(c *gin.Context) {
 	botID := c.Param("id")
 
@@ -140,7 +175,15 @@ func (h *WalletHandler) SetBotPricing(c *gin.Context) {
 }
 
 // GetBotPricing handles GET /api/v1/bots/:id/pricing.
-// Returns the pricing configuration for a bot.
+// @Summary Get bot pricing
+// @Description Returns the pricing configuration for a bot.
+// @Tags Billing
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Bot ID"
+// @Success 200 {object} response.CommonResponse
+// @Failure 404 {object} response.CommonResponse
+// @Router /bots/{id}/pricing [get]
 func (h *WalletHandler) GetBotPricing(c *gin.Context) {
 	botID := c.Param("id")
 

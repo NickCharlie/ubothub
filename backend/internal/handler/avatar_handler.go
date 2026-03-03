@@ -23,6 +23,16 @@ func NewAvatarHandler(avatarSvc *service.AvatarService) *AvatarHandler {
 }
 
 // Create handles POST /api/v1/avatars.
+// @Summary Create avatar
+// @Description Create a new avatar configuration with render type and scene config.
+// @Tags Avatar
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param body body request.CreateAvatarRequest true "Avatar creation payload"
+// @Success 200 {object} response.CommonResponse{data=response.AvatarResponse}
+// @Failure 400 {object} response.CommonResponse
+// @Router /avatars [post]
 func (h *AvatarHandler) Create(c *gin.Context) {
 	var req request.CreateAvatarRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -44,6 +54,15 @@ func (h *AvatarHandler) Create(c *gin.Context) {
 }
 
 // List handles GET /api/v1/avatars.
+// @Summary List user's avatars
+// @Description Returns paginated list of avatars owned by the current user.
+// @Tags Avatar
+// @Produce json
+// @Security BearerAuth
+// @Param page query int false "Page number" default(1)
+// @Param page_size query int false "Page size" default(20)
+// @Success 200 {object} response.CommonResponse
+// @Router /avatars [get]
 func (h *AvatarHandler) List(c *gin.Context) {
 	var req request.ListAvatarRequest
 	if err := c.ShouldBindQuery(&req); err != nil {
@@ -74,6 +93,15 @@ func (h *AvatarHandler) List(c *gin.Context) {
 }
 
 // Get handles GET /api/v1/avatars/:id.
+// @Summary Get avatar details
+// @Description Returns detailed avatar configuration with bound assets.
+// @Tags Avatar
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Avatar ID"
+// @Success 200 {object} response.CommonResponse{data=response.AvatarResponse}
+// @Failure 404 {object} response.CommonResponse
+// @Router /avatars/{id} [get]
 func (h *AvatarHandler) Get(c *gin.Context) {
 	avatarID := c.Param("id")
 	userID := c.GetString("user_id")
@@ -88,6 +116,17 @@ func (h *AvatarHandler) Get(c *gin.Context) {
 }
 
 // Update handles PUT /api/v1/avatars/:id.
+// @Summary Update avatar
+// @Description Update avatar name, description, scene config, or action mapping.
+// @Tags Avatar
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Avatar ID"
+// @Param body body request.UpdateAvatarRequest true "Avatar update payload"
+// @Success 200 {object} response.CommonResponse{data=response.AvatarResponse}
+// @Failure 404 {object} response.CommonResponse
+// @Router /avatars/{id} [put]
 func (h *AvatarHandler) Update(c *gin.Context) {
 	var req request.UpdateAvatarRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -111,6 +150,15 @@ func (h *AvatarHandler) Update(c *gin.Context) {
 }
 
 // Delete handles DELETE /api/v1/avatars/:id.
+// @Summary Delete avatar
+// @Description Delete an avatar configuration and its asset bindings.
+// @Tags Avatar
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Avatar ID"
+// @Success 200 {object} response.CommonResponse
+// @Failure 404 {object} response.CommonResponse
+// @Router /avatars/{id} [delete]
 func (h *AvatarHandler) Delete(c *gin.Context) {
 	avatarID := c.Param("id")
 	userID := c.GetString("user_id")
@@ -124,6 +172,18 @@ func (h *AvatarHandler) Delete(c *gin.Context) {
 }
 
 // BindBot handles POST /api/v1/avatars/:id/bind-bot.
+// @Summary Bind bot to avatar
+// @Description Associate a bot with this avatar configuration.
+// @Tags Avatar
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Avatar ID"
+// @Param body body request.BindBotRequest true "Bot binding payload"
+// @Success 200 {object} response.CommonResponse
+// @Failure 404 {object} response.CommonResponse
+// @Failure 409 {object} response.CommonResponse
+// @Router /avatars/{id}/bind-bot [post]
 func (h *AvatarHandler) BindBot(c *gin.Context) {
 	var req request.BindBotRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -143,6 +203,17 @@ func (h *AvatarHandler) BindBot(c *gin.Context) {
 }
 
 // BindAsset handles POST /api/v1/avatars/:id/bind-asset.
+// @Summary Bind asset to avatar
+// @Description Associate a 3D/Live2D asset with an avatar role.
+// @Tags Avatar
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Avatar ID"
+// @Param body body request.BindAssetRequest true "Asset binding payload"
+// @Success 200 {object} response.CommonResponse
+// @Failure 404 {object} response.CommonResponse
+// @Router /avatars/{id}/bind-asset [post]
 func (h *AvatarHandler) BindAsset(c *gin.Context) {
 	var req request.BindAssetRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -165,6 +236,16 @@ func (h *AvatarHandler) BindAsset(c *gin.Context) {
 }
 
 // UnbindAsset handles DELETE /api/v1/avatars/:id/assets/:assetId.
+// @Summary Unbind asset from avatar
+// @Description Remove an asset from the avatar configuration.
+// @Tags Avatar
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Avatar ID"
+// @Param assetId path string true "Asset ID"
+// @Success 200 {object} response.CommonResponse
+// @Failure 404 {object} response.CommonResponse
+// @Router /avatars/{id}/assets/{assetId} [delete]
 func (h *AvatarHandler) UnbindAsset(c *gin.Context) {
 	avatarID := c.Param("id")
 	assetID := c.Param("assetId")
@@ -179,6 +260,17 @@ func (h *AvatarHandler) UnbindAsset(c *gin.Context) {
 }
 
 // UpdateActionMapping handles PUT /api/v1/avatars/:id/action-mapping.
+// @Summary Update action mapping
+// @Description Update the action-to-animation mapping for an avatar.
+// @Tags Avatar
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Avatar ID"
+// @Param body body request.UpdateActionMappingRequest true "Action mapping payload"
+// @Success 200 {object} response.CommonResponse
+// @Failure 404 {object} response.CommonResponse
+// @Router /avatars/{id}/action-mapping [put]
 func (h *AvatarHandler) UpdateActionMapping(c *gin.Context) {
 	var req request.UpdateActionMappingRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -242,7 +334,14 @@ func handleAvatarError(c *gin.Context, err error) {
 }
 
 // GetPublic handles GET /api/v1/plaza/avatars/:id.
-// Returns avatar with its 3D model assets for public preview (guests can view, not chat).
+// @Summary Get public avatar preview
+// @Description Returns avatar with its 3D model assets for public preview.
+// @Tags Plaza
+// @Produce json
+// @Param id path string true "Avatar ID"
+// @Success 200 {object} response.CommonResponse{data=response.AvatarResponse}
+// @Failure 404 {object} response.CommonResponse
+// @Router /plaza/avatars/{id} [get]
 func (h *AvatarHandler) GetPublic(c *gin.Context) {
 	avatarID := c.Param("id")
 

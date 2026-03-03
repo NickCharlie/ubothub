@@ -27,7 +27,13 @@ func NewAuthHandler(authSvc *service.AuthService, emailSvc *service.EmailService
 }
 
 // Captcha handles GET /api/v1/auth/captcha.
-// Generates a new captcha image and returns the captcha ID + base64 image.
+// @Summary Generate captcha
+// @Description Generates a new captcha image and returns the captcha ID + base64 image.
+// @Tags Auth
+// @Produce json
+// @Success 200 {object} response.CommonResponse
+// @Failure 500 {object} response.CommonResponse
+// @Router /auth/captcha [get]
 func (h *AuthHandler) Captcha(c *gin.Context) {
 	result, err := h.captchaSvc.Generate()
 	if err != nil {
@@ -41,6 +47,16 @@ func (h *AuthHandler) Captcha(c *gin.Context) {
 }
 
 // Register handles POST /api/v1/auth/register.
+// @Summary Register new user
+// @Description Register a new user account with email, username, and password.
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param body body request.RegisterRequest true "Registration payload"
+// @Success 200 {object} response.CommonResponse
+// @Failure 400 {object} response.CommonResponse
+// @Failure 409 {object} response.CommonResponse
+// @Router /auth/register [post]
 func (h *AuthHandler) Register(c *gin.Context) {
 	var req request.RegisterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -109,6 +125,16 @@ func (h *AuthHandler) Register(c *gin.Context) {
 }
 
 // Login handles POST /api/v1/auth/login.
+// @Summary User login
+// @Description Authenticate user with email and password, returns JWT tokens.
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param body body request.LoginRequest true "Login payload"
+// @Success 200 {object} response.CommonResponse
+// @Failure 400 {object} response.CommonResponse
+// @Failure 401 {object} response.CommonResponse
+// @Router /auth/login [post]
 func (h *AuthHandler) Login(c *gin.Context) {
 	var req request.LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -153,6 +179,15 @@ func (h *AuthHandler) Login(c *gin.Context) {
 }
 
 // Refresh handles POST /api/v1/auth/refresh.
+// @Summary Refresh access token
+// @Description Refresh the access token using a valid refresh token.
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param body body request.RefreshTokenRequest true "Refresh token payload"
+// @Success 200 {object} response.CommonResponse
+// @Failure 401 {object} response.CommonResponse
+// @Router /auth/refresh [post]
 func (h *AuthHandler) Refresh(c *gin.Context) {
 	var req request.RefreshTokenRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -181,6 +216,14 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 }
 
 // Logout handles POST /api/v1/auth/logout.
+// @Summary Logout user
+// @Description Revoke the current access token.
+// @Tags Auth
+// @Produce json
+// @Param Authorization header string true "Bearer token"
+// @Success 200 {object} response.CommonResponse
+// @Failure 500 {object} response.CommonResponse
+// @Router /auth/logout [post]
 func (h *AuthHandler) Logout(c *gin.Context) {
 	authHeader := c.GetHeader("Authorization")
 	tokenStr := strings.TrimPrefix(authHeader, "Bearer ")
@@ -194,6 +237,14 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 }
 
 // VerifyEmail handles GET /api/v1/auth/verify-email?token=xxx.
+// @Summary Verify email
+// @Description Verify user email address using the token sent via email.
+// @Tags Auth
+// @Produce json
+// @Param token query string true "Email verification token"
+// @Success 200 {object} response.CommonResponse
+// @Failure 400 {object} response.CommonResponse
+// @Router /auth/verify-email [get]
 func (h *AuthHandler) VerifyEmail(c *gin.Context) {
 	token := c.Query("token")
 	if token == "" {
@@ -220,6 +271,14 @@ func (h *AuthHandler) VerifyEmail(c *gin.Context) {
 }
 
 // ForgotPassword handles POST /api/v1/auth/forgot-password.
+// @Summary Request password reset
+// @Description Send a password reset email to the given address.
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param body body request.ForgotPasswordRequest true "Email address"
+// @Success 200 {object} response.CommonResponse
+// @Router /auth/forgot-password [post]
 func (h *AuthHandler) ForgotPassword(c *gin.Context) {
 	var req request.ForgotPasswordRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -237,6 +296,15 @@ func (h *AuthHandler) ForgotPassword(c *gin.Context) {
 }
 
 // ResetPassword handles POST /api/v1/auth/reset-password.
+// @Summary Reset password
+// @Description Reset user password using a valid reset token.
+// @Tags Auth
+// @Accept json
+// @Produce json
+// @Param body body request.ResetPasswordRequest true "Reset password payload"
+// @Success 200 {object} response.CommonResponse
+// @Failure 400 {object} response.CommonResponse
+// @Router /auth/reset-password [post]
 func (h *AuthHandler) ResetPassword(c *gin.Context) {
 	var req request.ResetPasswordRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -263,6 +331,14 @@ func (h *AuthHandler) ResetPassword(c *gin.Context) {
 }
 
 // ResendVerification handles POST /api/v1/auth/resend-verification.
+// @Summary Resend verification email
+// @Description Resend email verification for the current authenticated user.
+// @Tags Auth
+// @Produce json
+// @Security BearerAuth
+// @Success 200 {object} response.CommonResponse
+// @Failure 401 {object} response.CommonResponse
+// @Router /auth/resend-verification [post]
 func (h *AuthHandler) ResendVerification(c *gin.Context) {
 	userID := c.GetString("user_id")
 	if userID == "" {

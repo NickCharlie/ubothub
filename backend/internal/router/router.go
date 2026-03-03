@@ -6,6 +6,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 	"github.com/NickCharlie/ubothub/backend/internal/adapter"
 	"github.com/NickCharlie/ubothub/backend/internal/captcha"
 	"github.com/NickCharlie/ubothub/backend/internal/config"
@@ -46,6 +48,9 @@ func Setup(ctx context.Context, db *gorm.DB, rdb *redis.Client, store storage.Ob
 		Window:      time.Second,
 		KeyPrefix:   "rl:global",
 	}))
+
+	// Swagger API documentation.
+	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	// Health check endpoint (no auth required).
 	r.GET("/api/v1/health", func(c *gin.Context) {
