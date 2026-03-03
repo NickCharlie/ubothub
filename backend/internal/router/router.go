@@ -5,7 +5,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
+	"github.com/ubothub/backend/internal/adapter"
 	"github.com/ubothub/backend/internal/config"
+	"github.com/ubothub/backend/internal/event"
 	"github.com/ubothub/backend/internal/handler"
 	"github.com/ubothub/backend/internal/middleware"
 	"github.com/ubothub/backend/internal/repository"
@@ -50,6 +52,13 @@ func Setup(db *gorm.DB, rdb *redis.Client, cfg *config.Config, rootLogger *zap.L
 		cfg.JWT.Issuer,
 	)
 
+	// Initialize event bus.
+	eventLog := logger.Named(rootLogger, "event")
+	eventBus := event.NewBus(10, eventLog)
+
+	// Initialize adapter factory.
+	adapterFactory := adapter.NewFactory()
+
 	// Initialize repositories.
 	userRepo := repository.NewUserRepository(db)
 	botRepo := repository.NewBotRepository(db)
@@ -66,6 +75,8 @@ func Setup(db *gorm.DB, rdb *redis.Client, cfg *config.Config, rootLogger *zap.L
 	authHandler := handler.NewAuthHandler(authSvc)
 	userHandler := handler.NewUserHandler(userSvc)
 	botHandler := handler.NewBotHandler(botSvc)
+	gatewayLog := logger.Named(rootLogger, "gateway")
+	gatewayHandler := handler.NewGatewayHandler(botSvc, adapterFactory, eventBus, gatewayLog)
 
 	// Public auth routes with stricter rate limiting.
 	authRoutes := r.Group("/api/v1/auth")
@@ -79,6 +90,18 @@ func Setup(db *gorm.DB, rdb *redis.Client, cfg *config.Config, rootLogger *zap.L
 		authRoutes.POST("/login", authHandler.Login)
 		authRoutes.POST("/refresh", authHandler.Refresh)
 		authRoutes.POST("/logout", authHandler.Logout)
+	}
+
+	// Bot gateway routes (authenticated by bot access token, not JWT).
+	gatewayRoutes := r.Group("/api/v1/gateway")
+	gatewayRoutes.Use(middleware.RateLimiter(rdb, middleware.RateLimiterConfig{
+		MaxRequests: 300,
+		Window:      time.Minute,
+		KeyPrefix:   "rl:gateway",
+	}))
+	{
+		gatewayRoutes.POST("/webhook/:token", gatewayHandler.Webhook)
+		gatewayRoutes.POST("/message", gatewayHandler.Message)
 	}
 
 	// Authenticated API v1 route group.
