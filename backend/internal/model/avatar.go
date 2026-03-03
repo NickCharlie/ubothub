@@ -2,21 +2,24 @@ package model
 
 import (
 	"time"
+
+	"gorm.io/gorm"
 )
 
 // AvatarConfig represents a virtual avatar configuration entity.
 type AvatarConfig struct {
-	ID            string    `gorm:"type:char(26);primaryKey" json:"id"`
-	UserID        string    `gorm:"type:char(26);index;not null;column:user_id" json:"user_id"`
-	BotID         string    `gorm:"type:char(26);index;column:bot_id" json:"bot_id"`
-	Name          string    `gorm:"type:varchar(128);not null" json:"name"`
-	Description   string    `gorm:"type:text" json:"description"`
-	RenderType    string    `gorm:"type:varchar(16);not null;column:render_type" json:"render_type"`
-	SceneConfig   string    `gorm:"type:jsonb;default:'{}';column:scene_config" json:"scene_config"`
-	ActionMapping string    `gorm:"type:jsonb;default:'{}';column:action_mapping" json:"action_mapping"`
-	IsDefault     bool      `gorm:"default:false;column:is_default" json:"is_default"`
-	CreatedAt     time.Time `gorm:"autoCreateTime" json:"created_at"`
-	UpdatedAt     time.Time `gorm:"autoUpdateTime" json:"updated_at"`
+	ID            string         `gorm:"type:char(26);primaryKey" json:"id"`
+	UserID        string         `gorm:"type:char(26);index;not null;column:user_id" json:"user_id"`
+	BotID         string         `gorm:"type:char(26);index;column:bot_id" json:"bot_id"`
+	Name          string         `gorm:"type:varchar(128);not null" json:"name"`
+	Description   string         `gorm:"type:text" json:"description"`
+	RenderType    string         `gorm:"type:varchar(16);not null;column:render_type" json:"render_type"`
+	SceneConfig   string         `gorm:"type:jsonb;default:'{}';column:scene_config" json:"scene_config"`
+	ActionMapping string         `gorm:"type:jsonb;default:'{}';column:action_mapping" json:"action_mapping"`
+	IsDefault     bool           `gorm:"default:false;column:is_default" json:"is_default"`
+	CreatedAt     time.Time      `gorm:"autoCreateTime" json:"created_at"`
+	UpdatedAt     time.Time      `gorm:"autoUpdateTime" json:"updated_at"`
+	DeletedAt     gorm.DeletedAt `gorm:"index" json:"deleted_at,omitempty"`
 
 	User         User          `gorm:"foreignKey:UserID" json:"-"`
 	Bot          *Bot          `gorm:"foreignKey:BotID" json:"-"`

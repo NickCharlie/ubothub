@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/lib/pq"
+	"gorm.io/gorm"
 )
 
 // Asset represents an uploaded model or motion file entity.
@@ -24,6 +25,7 @@ type Asset struct {
 	Status        string         `gorm:"type:varchar(16);default:processing;not null" json:"status"`
 	CreatedAt     time.Time      `gorm:"autoCreateTime" json:"created_at"`
 	UpdatedAt     time.Time      `gorm:"autoUpdateTime" json:"updated_at"`
+	DeletedAt     gorm.DeletedAt `gorm:"index" json:"deleted_at,omitempty"`
 
 	User User `gorm:"foreignKey:UserID" json:"-"`
 }
