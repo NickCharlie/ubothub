@@ -1,0 +1,9 @@
+.git
+.gitignore
+.claude
+node_modules/
+dist/
+.vite/
+*.md
+*.log
+.env*

@@ -1,0 +1,100 @@
+server:
+  mode: "release"
+  port: 8080
+  read_timeout: 10
+  write_timeout: 30
+  allowed_origins:
+    - "https://ubothub.com"
+    - "https://www.ubothub.com"
+  frontend_url: "https://ubothub.com"
+
+database:
+  host: "postgres"
+  port: 5432
+  user: "${POSTGRES_USER}"
+  password: "${POSTGRES_PASSWORD}"
+  dbname: "${POSTGRES_DB}"
+  sslmode: "disable"
+  max_idle_conns: 10
+  max_open_conns: 100
+  conn_max_lifetime: 3600
+
+redis:
+  addr: "redis:6379"
+  password: "${REDIS_PASSWORD}"
+  db: 0
+  pool_size: 100
+
+storage:
+  provider: "${STORAGE_PROVIDER}"
+  minio:
+    endpoint: "minio:9000"
+    access_key: "${MINIO_ROOT_USER}"
+    secret_key: "${MINIO_ROOT_PASSWORD}"
+    use_ssl: false
+    bucket: "ubothub-assets"
+  aliyun_oss:
+    endpoint: "${OSS_ENDPOINT}"
+    access_key_id: "${OSS_ACCESS_KEY_ID}"
+    access_key_secret: "${OSS_ACCESS_KEY_SECRET}"
+    bucket: "${OSS_BUCKET}"
+    cdn_domain: "${OSS_CDN_DOMAIN}"
+
+jwt:
+  secret: "${JWT_SECRET}"
+  access_token_expire: 15
+  refresh_token_expire: 10080
+  issuer: "ubothub"
+
+queue:
+  redis_addr: "redis:6379"
+  redis_password: "${REDIS_PASSWORD}"
+  concurrency: 20
+
+log:
+  level: "info"
+  format: "json"
+  output: "file"
+  file_path: "/var/log/ubothub/app.log"
+
+email:
+  smtp_host: "${SMTP_HOST}"
+  smtp_port: 465
+  from_address: "${SMTP_FROM_ADDRESS}"
+  from_name: "UBotHub"
+  password: "${SMTP_PASSWORD}"
+  use_tls: true
+
+moderation:
+  enabled: true
+  access_key_id: "${MODERATION_ACCESS_KEY_ID}"
+  access_key_secret: "${MODERATION_ACCESS_KEY_SECRET}"
+  endpoint: "${MODERATION_ENDPOINT}"
+
+websocket:
+  max_connections: 10000
+  max_connections_per_room: 500
+  max_connections_per_user: 5
+  read_buffer_size: 4096
+  write_buffer_size: 4096
+  max_message_size: 8192
+
+payment:
+  wechat:
+    enabled: true
+    sp_mch_id: "${WECHAT_SP_MCH_ID}"
+    sp_app_id: "${WECHAT_SP_APP_ID}"
+    sub_mch_id: "${WECHAT_SUB_MCH_ID}"
+    sub_app_id: "${WECHAT_SUB_APP_ID}"
+    serial_no: "${WECHAT_SERIAL_NO}"
+    api_v3_key: "${WECHAT_API_V3_KEY}"
+    private_key: "${WECHAT_PRIVATE_KEY}"
+    notify_url: "https://api.ubothub.com/api/v1/payment/notify/wechat"
+  alipay:
+    enabled: true
+    app_id: "${ALIPAY_APP_ID}"
+    private_key: "${ALIPAY_PRIVATE_KEY}"
+    alipay_public_key: "${ALIPAY_PUBLIC_KEY}"
+    is_prod: true
+    notify_url: "https://api.ubothub.com/api/v1/payment/notify/alipay"
+    return_url: "https://ubothub.com/payment/success"

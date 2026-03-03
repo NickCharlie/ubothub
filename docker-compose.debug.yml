@@ -1,0 +1,115 @@
+# Docker Compose for DEBUG environment.
+# Full-stack containerized development with hot-reload and debugger support.
+#
+# Usage:
+#   docker-compose -f docker-compose.debug.yml up -d --build
+#   docker-compose -f docker-compose.debug.yml logs -f
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: ubothub-debug-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: ubothub
+      POSTGRES_PASSWORD: ubothub_dev
+      POSTGRES_DB: ubothub
+    volumes:
+      - debug_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ubothub"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: ubothub-debug-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --requirepass ubothub_dev --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - debug_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "ubothub_dev", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  minio:
+    image: minio/minio:latest
+    container_name: ubothub-debug-minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin123
+    volumes:
+      - debug_minio_data:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  asynqmon:
+    image: hibiken/asynqmon:latest
+    container_name: ubothub-debug-asynqmon
+    ports:
+      - "8081:8080"
+    environment:
+      REDIS_ADDR: redis:6379
+      REDIS_PASSWORD: ubothub_dev
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.debug
+    container_name: ubothub-debug-backend
+    ports:
+      - "8080:8080"
+      - "2345:2345"
+    volumes:
+      - ./backend:/app
+      - debug_go_cache:/root/.cache/go-build
+      - debug_go_mod:/go/pkg/mod
+    environment:
+      - CONFIG_PATH=configs/config.debug.yaml
+      - GIN_MODE=debug
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.debug
+    container_name: ubothub-debug-frontend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend/src:/app/src
+      - ./frontend/public:/app/public
+      - ./frontend/index.html:/app/index.html
+      - ./frontend/vite.config.ts:/app/vite.config.ts
+    environment:
+      - VITE_API_BASE_URL=http://localhost:8080/api/v1
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  debug_postgres_data:
+  debug_redis_data:
+  debug_minio_data:
+  debug_go_cache:
+  debug_go_mod:

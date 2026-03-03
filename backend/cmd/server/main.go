@@ -55,8 +55,12 @@ var mode = flag.String("mode", "all", "Run mode: api, worker, all")
 func main() {
 	flag.Parse()
 
-	// Load configuration.
-	cfg, err := config.Load("configs/config.yaml")
+	// Load configuration (supports CONFIG_PATH env var override).
+	configPath := os.Getenv("CONFIG_PATH")
+	if configPath == "" {
+		configPath = "configs/config.yaml"
+	}
+	cfg, err := config.Load(configPath)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to load config: %v\n", err)
 		os.Exit(1)

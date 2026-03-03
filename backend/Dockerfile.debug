@@ -1,0 +1,21 @@
+# Debug Dockerfile with hot-reload (air) and delve debugger support.
+FROM golang:1.25-alpine
+
+RUN apk add --no-cache git ca-certificates tzdata curl
+
+# Install air for hot-reload and delve for remote debugging.
+RUN go install github.com/air-verse/air@latest && \
+    go install github.com/go-delve/delve/cmd/dlv@latest
+
+WORKDIR /app
+
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
+
+# 8080: HTTP server, 2345: delve debugger
+EXPOSE 8080 2345
+
+# Use air for hot-reload in debug mode.
+CMD ["air", "-c", ".air.toml"]

@@ -1,4 +1,10 @@
-version: "3.9"
+# Docker Compose for LOCAL DEVELOPMENT — infrastructure services only.
+# Backend and frontend run natively (go run / pnpm dev) for fastest iteration.
+#
+# Usage:
+#   docker-compose up -d        # start infra
+#   make dev-backend             # in terminal 1
+#   make dev-frontend            # in terminal 2
 
 services:
   postgres:

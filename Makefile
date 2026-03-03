@@ -1,6 +1,6 @@
-.PHONY: dev dev-backend dev-frontend docker-up docker-down docker-prod-up docker-prod-down build test lint swagger wire clean
+.PHONY: dev dev-backend dev-frontend docker-up docker-down docker-debug-up docker-debug-down docker-prod-up docker-prod-down build test lint swagger wire clean
 
-# Development
+# Development (native — infrastructure in Docker, app runs locally)
 dev: docker-up dev-backend dev-frontend
 
 dev-backend:
@@ -9,7 +9,7 @@ dev-backend:
 dev-frontend:
 	cd frontend && pnpm dev
 
-# Docker (development infrastructure only)
+# Docker — infrastructure only (postgres, redis, minio, asynqmon)
 docker-up:
 	docker-compose up -d
 
@@ -19,7 +19,20 @@ docker-down:
 docker-clean:
 	docker-compose down -v
 
-# Docker (production: full stack with backend services)
+# Docker — debug environment (full stack with hot-reload + debugger)
+docker-debug-up:
+	docker-compose -f docker-compose.debug.yml up -d --build
+
+docker-debug-down:
+	docker-compose -f docker-compose.debug.yml down
+
+docker-debug-logs:
+	docker-compose -f docker-compose.debug.yml logs -f
+
+docker-debug-clean:
+	docker-compose -f docker-compose.debug.yml down -v
+
+# Docker — production environment (optimized builds, nginx, separated API/worker)
 docker-prod-up:
 	docker-compose -f docker-compose.prod.yml up -d --build
 
@@ -28,6 +41,9 @@ docker-prod-down:
 
 docker-prod-logs:
 	docker-compose -f docker-compose.prod.yml logs -f
+
+docker-prod-clean:
+	docker-compose -f docker-compose.prod.yml down -v
 
 # Build
 build-backend:

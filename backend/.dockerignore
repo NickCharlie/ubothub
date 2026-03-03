@@ -1,0 +1,14 @@
+.git
+.gitignore
+.claude
+bin/
+tmp/
+docs/swagger.json
+docs/swagger.yaml
+docs/docs.go
+vendor/
+*.md
+*.log
+.env*
+.air.toml
+wire_gen.go
