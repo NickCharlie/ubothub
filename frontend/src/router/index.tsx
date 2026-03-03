@@ -11,6 +11,8 @@ import AssetListPage from "@/pages/asset/AssetListPage";
 import WalletPage from "@/pages/wallet/WalletPage";
 import AdminPage from "@/pages/admin/AdminPage";
 import ProfilePage from "@/pages/profile/ProfilePage";
+import PlazaPage from "@/pages/plaza/PlazaPage";
+import PlazaChatPage from "@/pages/plaza/PlazaChatPage";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { accessToken } = useAuthStore();
@@ -32,8 +34,28 @@ export default function AppRouter() {
   return (
     <Routes>
       {/* Guest routes */}
-      <Route path="/auth/login" element={<GuestRoute><LoginPage /></GuestRoute>} />
-      <Route path="/auth/register" element={<GuestRoute><RegisterPage /></GuestRoute>} />
+      <Route
+        path="/auth/login"
+        element={
+          <GuestRoute>
+            <LoginPage />
+          </GuestRoute>
+        }
+      />
+      <Route
+        path="/auth/register"
+        element={
+          <GuestRoute>
+            <RegisterPage />
+          </GuestRoute>
+        }
+      />
+
+      {/* Plaza routes (public, with sidebar layout) */}
+      <Route element={<AppLayout />}>
+        <Route path="/plaza" element={<PlazaPage />} />
+        <Route path="/plaza/:id" element={<PlazaChatPage />} />
+      </Route>
 
       {/* Protected routes with layout */}
       <Route
@@ -54,8 +76,8 @@ export default function AppRouter() {
       </Route>
 
       {/* Root redirect */}
-      <Route path="/" element={<Navigate to="/dashboard" replace />} />
-      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      <Route path="/" element={<Navigate to="/plaza" replace />} />
+      <Route path="*" element={<Navigate to="/plaza" replace />} />
     </Routes>
   );
 }

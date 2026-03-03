@@ -9,10 +9,12 @@ import {
   Wallet,
   Shield,
   LogOut,
+  LogIn,
   ChevronLeft,
   ChevronRight,
   Sparkles,
   UserCog,
+  Globe,
 } from "lucide-react";
 import { useAuthStore } from "@/stores/auth";
 
@@ -22,34 +24,57 @@ interface NavItem {
   icon: React.ReactNode;
   path: string;
   adminOnly?: boolean;
+  authRequired?: boolean;
 }
 
 const navItems: NavItem[] = [
+  {
+    key: "plaza",
+    label: "Plaza",
+    icon: <Globe size={20} />,
+    path: "/plaza",
+  },
   {
     key: "dashboard",
     label: "Dashboard",
     icon: <LayoutDashboard size={20} />,
     path: "/dashboard",
+    authRequired: true,
   },
-  { key: "bots", label: "Bots", icon: <Bot size={20} />, path: "/bots" },
+  {
+    key: "bots",
+    label: "Bots",
+    icon: <Bot size={20} />,
+    path: "/bots",
+    authRequired: true,
+  },
   {
     key: "avatars",
     label: "Avatars",
     icon: <Sparkles size={20} />,
     path: "/avatars",
+    authRequired: true,
   },
-  { key: "assets", label: "Assets", icon: <Box size={20} />, path: "/assets" },
+  {
+    key: "assets",
+    label: "Assets",
+    icon: <Box size={20} />,
+    path: "/assets",
+    authRequired: true,
+  },
   {
     key: "wallet",
     label: "Wallet",
     icon: <Wallet size={20} />,
     path: "/wallet",
+    authRequired: true,
   },
   {
     key: "profile",
     label: "Profile",
     icon: <UserCog size={20} />,
     path: "/profile",
+    authRequired: true,
   },
   {
     key: "admin",
@@ -57,6 +82,7 @@ const navItems: NavItem[] = [
     icon: <Shield size={20} />,
     path: "/admin",
     adminOnly: true,
+    authRequired: true,
   },
 ];
 
@@ -64,10 +90,12 @@ export default function AppLayout() {
   const [collapsed, setCollapsed] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
-  const { user, logout } = useAuthStore();
+  const { user, logout, accessToken } = useAuthStore();
 
   const filteredNavItems = navItems.filter(
-    (item) => !item.adminOnly || user?.role === "admin",
+    (item) =>
+      (!item.adminOnly || user?.role === "admin") &&
+      (!item.authRequired || accessToken),
   );
 
   const activeKey = filteredNavItems.find((item) =>
@@ -164,13 +192,23 @@ export default function AppLayout() {
                 <ChevronLeft size={16} />
               )}
             </button>
-            <button
-              onClick={handleLogout}
-              className="flex items-center justify-center p-2 rounded-lg text-white/40 hover:text-red-400 hover:bg-white/[0.04] transition-colors"
-              title="Logout"
-            >
-              <LogOut size={16} />
-            </button>
+            {accessToken ? (
+              <button
+                onClick={handleLogout}
+                className="flex items-center justify-center p-2 rounded-lg text-white/40 hover:text-red-400 hover:bg-white/[0.04] transition-colors"
+                title="Logout"
+              >
+                <LogOut size={16} />
+              </button>
+            ) : (
+              <button
+                onClick={() => navigate("/auth/login")}
+                className="flex items-center justify-center p-2 rounded-lg text-white/40 hover:text-blue-400 hover:bg-white/[0.04] transition-colors"
+                title="Login"
+              >
+                <LogIn size={16} />
+              </button>
+            )}
           </div>
         </div>
       </motion.aside>
