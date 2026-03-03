@@ -1,4 +1,11 @@
-import { useEffect, useState, useRef, useCallback } from "react";
+import {
+  useEffect,
+  useState,
+  useRef,
+  useCallback,
+  lazy,
+  Suspense,
+} from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -12,6 +19,10 @@ import {
 } from "lucide-react";
 import { plazaApi, type PlazaBot, type PlazaAvatar } from "@/api/plaza";
 import { useAuthStore } from "@/stores/auth";
+import type { ModelAdapter } from "@/components/avatar/model/types";
+
+// Lazy-load the 3D viewer to avoid loading Three.js on pages that don't need it
+const AvatarViewer = lazy(() => import("@/components/avatar/AvatarViewer"));
 
 interface ChatMessage {
   id: string;
@@ -27,6 +38,7 @@ export default function PlazaChatPage() {
 
   const [bot, setBot] = useState<PlazaBot | null>(null);
   const [avatar, setAvatar] = useState<PlazaAvatar | null>(null);
+  const [avatarModelUrl, setAvatarModelUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputMsg, setInputMsg] = useState("");
@@ -35,6 +47,7 @@ export default function PlazaChatPage() {
   const [showInfo, setShowInfo] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const adapterRef = useRef<ModelAdapter | null>(null);
 
   // Auto-scroll to latest message
   useEffect(() => {
@@ -56,7 +69,22 @@ export default function PlazaChatPage() {
           const config = JSON.parse(botData.config);
           if (config.avatar_id) {
             const avatarRes = await plazaApi.getAvatar(config.avatar_id);
-            setAvatar(avatarRes.data.data);
+            const avatarData = avatarRes.data.data;
+            setAvatar(avatarData);
+
+            // Find the model asset (role=body for the main 3D model)
+            if (avatarData.avatar_assets) {
+              const bodyAsset = avatarData.avatar_assets.find(
+                (a: { role: string }) =>
+                  a.role === "body" || a.role === "model",
+              );
+              if (bodyAsset) {
+                // Build download URL for the asset
+                setAvatarModelUrl(
+                  `/api/v1/assets/${bodyAsset.asset_id}/download`,
+                );
+              }
+            }
           }
         } catch {
           // config might not have avatar_id
@@ -94,7 +122,7 @@ export default function PlazaChatPage() {
       ]);
     };
 
-    socket.onmessage = (event) => {
+    socket.onmessage = async (event) => {
       try {
         const data = JSON.parse(event.data);
 
@@ -108,18 +136,30 @@ export default function PlazaChatPage() {
               timestamp: data.timestamp || Date.now(),
             },
           ]);
+
+          // Trigger expression on bot reply
+          if (adapterRef.current && data.data?.emotion) {
+            const { playExpression } =
+              await import("@/components/avatar/AvatarViewer");
+            playExpression(adapterRef.current, data.data.emotion);
+          }
         } else if (data.type === "avatar_action") {
-          // Avatar action events can be handled by the 3D/Live2D renderer
-          // For now just show as system message
-          setMessages((prev) => [
-            ...prev,
-            {
-              id: `action-${Date.now()}`,
-              role: "system",
-              content: `Avatar action: ${data.data?.action || "unknown"}`,
-              timestamp: Date.now(),
-            },
-          ]);
+          // Handle avatar action from WebSocket
+          if (adapterRef.current && data.data?.animation_url) {
+            const { playAnimation } =
+              await import("@/components/avatar/AvatarViewer");
+            playAnimation(
+              adapterRef.current,
+              data.data.animation_url,
+              data.data.file_type || "vrma",
+              data.data.loop || false,
+            );
+          }
+          if (adapterRef.current && data.data?.expression) {
+            const { playExpression } =
+              await import("@/components/avatar/AvatarViewer");
+            playExpression(adapterRef.current, data.data.expression);
+          }
         } else if (data.type === "error") {
           setMessages((prev) => [
             ...prev,
@@ -132,7 +172,6 @@ export default function PlazaChatPage() {
           ]);
         }
       } catch {
-        // Non-JSON message
         setMessages((prev) => [
           ...prev,
           {
@@ -176,6 +215,10 @@ export default function PlazaChatPage() {
     inputRef.current?.focus();
   };
 
+  const handleAdapterReady = useCallback((adapter: ModelAdapter) => {
+    adapterRef.current = adapter;
+  }, []);
+
   const messageVariants = {
     hidden: { opacity: 0, y: 8, scale: 0.96 },
     show: {
@@ -198,6 +241,8 @@ export default function PlazaChatPage() {
   }
 
   if (!bot) return null;
+
+  const hasAvatar = avatar && avatarModelUrl;
 
   return (
     <div className="flex flex-col h-[calc(100vh-3rem)] max-h-[calc(100vh-3rem)]">
@@ -294,127 +339,163 @@ export default function PlazaChatPage() {
         </AnimatePresence>
       </motion.div>
 
-      {/* Messages area */}
-      <div className="flex-1 overflow-y-auto min-h-0 px-2">
-        <div className="space-y-3 py-4">
-          {messages.length === 0 ? (
-            <motion.div
-              className="flex flex-col items-center justify-center h-full min-h-[300px] text-white/20"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.3 }}
+      {/* Main content: Avatar + Chat */}
+      <div
+        className={`flex-1 flex min-h-0 gap-4 ${hasAvatar ? "flex-row" : "flex-col"}`}
+      >
+        {/* 3D Avatar panel */}
+        {hasAvatar && (
+          <motion.div
+            className="glass rounded-2xl overflow-hidden flex-shrink-0 hidden lg:block"
+            style={{ width: 360, height: "100%" }}
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ type: "spring", damping: 22, stiffness: 300 }}
+          >
+            <Suspense
+              fallback={
+                <div className="flex items-center justify-center h-full text-white/30">
+                  <div className="w-5 h-5 border-2 border-white/20 border-t-purple-400 rounded-full animate-spin" />
+                </div>
+              }
             >
-              <div className="w-16 h-16 rounded-3xl bg-gradient-to-br from-blue-500/10 to-purple-500/10 border border-white/[0.06] flex items-center justify-center mb-4">
-                <Bot size={28} className="text-white/20" />
-              </div>
-              <p className="text-sm mb-1">Start a conversation with {bot.name}</p>
-              <p className="text-xs text-white/15">
-                {accessToken
-                  ? "Type a message below to begin"
-                  : "Please login first to chat"}
-              </p>
-            </motion.div>
-          ) : (
-            <AnimatePresence initial={false}>
-              {messages.map((msg) => (
+              <AvatarViewer
+                modelUrl={avatarModelUrl}
+                onAdapterReady={handleAdapterReady}
+                cameraPosition={[0, 1.2, 2.0]}
+                cameraTarget={[0, 1.0, 0]}
+              />
+            </Suspense>
+          </motion.div>
+        )}
+
+        {/* Chat column */}
+        <div className="flex-1 flex flex-col min-w-0">
+          {/* Messages area */}
+          <div className="flex-1 overflow-y-auto min-h-0 px-2">
+            <div className="space-y-3 py-4">
+              {messages.length === 0 ? (
                 <motion.div
-                  key={msg.id}
-                  variants={messageVariants}
-                  initial="hidden"
-                  animate="show"
-                  className={`flex ${msg.role === "user" ? "justify-end" : msg.role === "system" ? "justify-center" : "justify-start"}`}
+                  className="flex flex-col items-center justify-center h-full min-h-[300px] text-white/20"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.3 }}
                 >
-                  {msg.role === "system" ? (
-                    <span className="text-[11px] text-white/25 px-3 py-1 bg-white/[0.03] rounded-full">
-                      {msg.content}
-                    </span>
-                  ) : (
-                    <div className="flex items-end gap-2 max-w-[75%]">
-                      {msg.role === "bot" && (
-                        <div className="w-7 h-7 rounded-xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 border border-white/[0.06] flex items-center justify-center flex-shrink-0 mb-0.5">
-                          <Bot size={12} className="text-blue-400" />
+                  <div className="w-16 h-16 rounded-3xl bg-gradient-to-br from-blue-500/10 to-purple-500/10 border border-white/[0.06] flex items-center justify-center mb-4">
+                    <Bot size={28} className="text-white/20" />
+                  </div>
+                  <p className="text-sm mb-1">
+                    Start a conversation with {bot.name}
+                  </p>
+                  <p className="text-xs text-white/15">
+                    {accessToken
+                      ? "Type a message below to begin"
+                      : "Please login first to chat"}
+                  </p>
+                </motion.div>
+              ) : (
+                <AnimatePresence initial={false}>
+                  {messages.map((msg) => (
+                    <motion.div
+                      key={msg.id}
+                      variants={messageVariants}
+                      initial="hidden"
+                      animate="show"
+                      className={`flex ${msg.role === "user" ? "justify-end" : msg.role === "system" ? "justify-center" : "justify-start"}`}
+                    >
+                      {msg.role === "system" ? (
+                        <span className="text-[11px] text-white/25 px-3 py-1 bg-white/[0.03] rounded-full">
+                          {msg.content}
+                        </span>
+                      ) : (
+                        <div className="flex items-end gap-2 max-w-[75%]">
+                          {msg.role === "bot" && (
+                            <div className="w-7 h-7 rounded-xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 border border-white/[0.06] flex items-center justify-center flex-shrink-0 mb-0.5">
+                              <Bot size={12} className="text-blue-400" />
+                            </div>
+                          )}
+                          <div
+                            className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${
+                              msg.role === "user"
+                                ? "bg-blue-500/20 border border-blue-500/25 text-blue-50 rounded-br-md"
+                                : "glass border border-white/[0.08] text-white/80 rounded-bl-md"
+                            }`}
+                          >
+                            <p className="whitespace-pre-wrap break-words">
+                              {msg.content}
+                            </p>
+                            <span className="text-[9px] text-white/20 mt-1 block text-right">
+                              {new Date(msg.timestamp).toLocaleTimeString([], {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </span>
+                          </div>
                         </div>
                       )}
-                      <div
-                        className={`px-4 py-2.5 rounded-2xl text-sm leading-relaxed ${
-                          msg.role === "user"
-                            ? "bg-blue-500/20 border border-blue-500/25 text-blue-50 rounded-br-md"
-                            : "glass border border-white/[0.08] text-white/80 rounded-bl-md"
-                        }`}
-                      >
-                        <p className="whitespace-pre-wrap break-words">
-                          {msg.content}
-                        </p>
-                        <span className="text-[9px] text-white/20 mt-1 block text-right">
-                          {new Date(msg.timestamp).toLocaleTimeString([], {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </span>
-                      </div>
-                    </div>
-                  )}
-                </motion.div>
-              ))}
-            </AnimatePresence>
-          )}
-          <div ref={messagesEndRef} />
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+              )}
+              <div ref={messagesEndRef} />
+            </div>
+          </div>
+
+          {/* Input area */}
+          <motion.div
+            className="glass-strong rounded-2xl p-3 mt-3 flex-shrink-0"
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{
+              type: "spring",
+              damping: 22,
+              stiffness: 300,
+              delay: 0.1,
+            }}
+          >
+            {!accessToken ? (
+              <div className="flex items-center justify-center gap-3 py-2">
+                <span className="text-sm text-white/40">
+                  Please login to start chatting
+                </span>
+                <button
+                  onClick={() => navigate("/auth/login")}
+                  className="glass-btn h-8 px-4 rounded-lg text-xs"
+                >
+                  Login
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-3">
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={inputMsg}
+                  onChange={(e) => setInputMsg(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      sendMessage();
+                    }
+                  }}
+                  placeholder={
+                    wsConnected ? "Type a message..." : "Connecting..."
+                  }
+                  disabled={!wsConnected}
+                  className="glass-input flex-1 h-10 rounded-xl px-4 text-sm disabled:opacity-40"
+                />
+                <button
+                  onClick={sendMessage}
+                  disabled={!wsConnected || !inputMsg.trim()}
+                  className="glass-btn h-10 w-10 rounded-xl p-0 disabled:opacity-30 disabled:hover:transform-none flex-shrink-0"
+                >
+                  <Send size={16} />
+                </button>
+              </div>
+            )}
+          </motion.div>
         </div>
       </div>
-
-      {/* Input area */}
-      <motion.div
-        className="glass-strong rounded-2xl p-3 mt-3 flex-shrink-0"
-        initial={{ opacity: 0, y: 16 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{
-          type: "spring",
-          damping: 22,
-          stiffness: 300,
-          delay: 0.1,
-        }}
-      >
-        {!accessToken ? (
-          <div className="flex items-center justify-center gap-3 py-2">
-            <span className="text-sm text-white/40">
-              Please login to start chatting
-            </span>
-            <button
-              onClick={() => navigate("/auth/login")}
-              className="glass-btn h-8 px-4 rounded-lg text-xs"
-            >
-              Login
-            </button>
-          </div>
-        ) : (
-          <div className="flex items-center gap-3">
-            <input
-              ref={inputRef}
-              type="text"
-              value={inputMsg}
-              onChange={(e) => setInputMsg(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  sendMessage();
-                }
-              }}
-              placeholder={
-                wsConnected ? "Type a message..." : "Connecting..."
-              }
-              disabled={!wsConnected}
-              className="glass-input flex-1 h-10 rounded-xl px-4 text-sm disabled:opacity-40"
-            />
-            <button
-              onClick={sendMessage}
-              disabled={!wsConnected || !inputMsg.trim()}
-              className="glass-btn h-10 w-10 rounded-xl p-0 disabled:opacity-30 disabled:hover:transform-none flex-shrink-0"
-            >
-              <Send size={16} />
-            </button>
-          </div>
-        )}
-      </motion.div>
     </div>
   );
 }
