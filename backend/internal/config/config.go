@@ -20,6 +20,7 @@ type Config struct {
 	Email      EmailConfig      `mapstructure:"email"`
 	Moderation ModerationConfig `mapstructure:"moderation"`
 	WebSocket  WebSocketConfig  `mapstructure:"websocket"`
+	Payment    PaymentConfig    `mapstructure:"payment"`
 }
 
 // ServerConfig holds HTTP server configuration.
@@ -157,6 +158,36 @@ type WebSocketConfig struct {
 	ReadBufferSize        int `mapstructure:"read_buffer_size"`
 	WriteBufferSize       int `mapstructure:"write_buffer_size"`
 	MaxMessageSize        int `mapstructure:"max_message_size"`
+}
+
+// PaymentConfig holds configuration for WeChat Pay and Alipay providers.
+type PaymentConfig struct {
+	Wechat WechatPayConfig `mapstructure:"wechat"`
+	Alipay AlipayPayConfig `mapstructure:"alipay"`
+}
+
+// WechatPayConfig holds WeChat Pay V3 service provider configuration.
+type WechatPayConfig struct {
+	Enabled    bool   `mapstructure:"enabled"`
+	SpMchID    string `mapstructure:"sp_mch_id"`
+	SpAppID    string `mapstructure:"sp_app_id"`
+	SubMchID   string `mapstructure:"sub_mch_id"`
+	SubAppID   string `mapstructure:"sub_app_id"`
+	SerialNo   string `mapstructure:"serial_no"`
+	ApiV3Key   string `mapstructure:"api_v3_key"`
+	PrivateKey string `mapstructure:"private_key"`
+	NotifyURL  string `mapstructure:"notify_url"`
+}
+
+// AlipayPayConfig holds Alipay service provider configuration.
+type AlipayPayConfig struct {
+	Enabled         bool   `mapstructure:"enabled"`
+	AppID           string `mapstructure:"app_id"`
+	PrivateKey      string `mapstructure:"private_key"`
+	AlipayPublicKey string `mapstructure:"alipay_public_key"`
+	IsProd          bool   `mapstructure:"is_prod"`
+	NotifyURL       string `mapstructure:"notify_url"`
+	ReturnURL       string `mapstructure:"return_url"`
 }
 
 // Load reads configuration from file and environment variables.

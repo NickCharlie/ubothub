@@ -3,6 +3,7 @@ package payment
 import (
 	"context"
 	"fmt"
+	"net/http"
 
 	"github.com/shopspring/decimal"
 )
@@ -43,10 +44,10 @@ func (p *noopProvider) Transfer(_ context.Context, req TransferRequest) (*Transf
 	}, nil
 }
 
-func (p *noopProvider) ParseNotify(_ context.Context, _ []byte) (*NotifyResult, error) {
+func (p *noopProvider) ParseNotify(_ context.Context, _ *http.Request) (*NotifyResult, error) {
 	return nil, fmt.Errorf("noop provider does not support notifications")
 }
 
-func (p *noopProvider) VerifyNotify(_ context.Context, _ []byte) (bool, error) {
+func (p *noopProvider) VerifyNotify(_ context.Context, _ *http.Request) (bool, error) {
 	return false, fmt.Errorf("noop provider does not support notifications")
 }

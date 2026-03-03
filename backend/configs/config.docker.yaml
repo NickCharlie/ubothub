@@ -78,3 +78,23 @@ websocket:
   read_buffer_size: 4096
   write_buffer_size: 4096
   max_message_size: 8192
+
+payment:
+  wechat:
+    enabled: false
+    sp_mch_id: ""
+    sp_app_id: ""
+    sub_mch_id: ""
+    sub_app_id: ""
+    serial_no: ""
+    api_v3_key: ""
+    private_key: ""
+    notify_url: ""
+  alipay:
+    enabled: false
+    app_id: ""
+    private_key: ""
+    alipay_public_key: ""
+    is_prod: true
+    notify_url: ""
+    return_url: ""

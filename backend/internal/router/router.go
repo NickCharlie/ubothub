@@ -148,8 +148,44 @@ func Setup(ctx context.Context, db *gorm.DB, rdb *redis.Client, store storage.Ob
 	walletSvc := service.NewWalletService(walletRepo, txnRepo, db, walletLog)
 	billingLog := logger.Named(rootLogger, "billing")
 	billingSvc := service.NewBillingService(pricingRepo, walletSvc, botRepo, billingLog)
-	paymentPvd := payment.NewNoopProvider()
-	walletHandler := handler.NewWalletHandler(walletSvc, billingSvc, paymentPvd)
+
+	// Initialize payment provider registry (WeChat Pay V3 + Alipay service provider mode).
+	paymentLog := logger.Named(rootLogger, "payment")
+	paymentRegistry, err := payment.NewRegistry(
+		payment.WechatConfig{
+			Enabled:    cfg.Payment.Wechat.Enabled,
+			SpMchID:    cfg.Payment.Wechat.SpMchID,
+			SpAppID:    cfg.Payment.Wechat.SpAppID,
+			SubMchID:   cfg.Payment.Wechat.SubMchID,
+			SubAppID:   cfg.Payment.Wechat.SubAppID,
+			SerialNo:   cfg.Payment.Wechat.SerialNo,
+			ApiV3Key:   cfg.Payment.Wechat.ApiV3Key,
+			PrivateKey: cfg.Payment.Wechat.PrivateKey,
+			NotifyURL:  cfg.Payment.Wechat.NotifyURL,
+		},
+		payment.AlipayConfig{
+			Enabled:         cfg.Payment.Alipay.Enabled,
+			AppID:           cfg.Payment.Alipay.AppID,
+			PrivateKey:      cfg.Payment.Alipay.PrivateKey,
+			AlipayPublicKey: cfg.Payment.Alipay.AlipayPublicKey,
+			IsProd:          cfg.Payment.Alipay.IsProd,
+			NotifyURL:       cfg.Payment.Alipay.NotifyURL,
+			ReturnURL:       cfg.Payment.Alipay.ReturnURL,
+		},
+		paymentLog,
+	)
+	if err != nil {
+		paymentLog.Fatal("failed to initialize payment registry", zap.Error(err))
+	}
+
+	// Get default provider for wallet handler (falls back to noop if none enabled).
+	defaultPaymentPvd, _ := payment.NewProvider(
+		payment.WechatConfig{Enabled: cfg.Payment.Wechat.Enabled, SpMchID: cfg.Payment.Wechat.SpMchID, SpAppID: cfg.Payment.Wechat.SpAppID, SubMchID: cfg.Payment.Wechat.SubMchID, SubAppID: cfg.Payment.Wechat.SubAppID, SerialNo: cfg.Payment.Wechat.SerialNo, ApiV3Key: cfg.Payment.Wechat.ApiV3Key, PrivateKey: cfg.Payment.Wechat.PrivateKey, NotifyURL: cfg.Payment.Wechat.NotifyURL},
+		payment.AlipayConfig{Enabled: cfg.Payment.Alipay.Enabled, AppID: cfg.Payment.Alipay.AppID, PrivateKey: cfg.Payment.Alipay.PrivateKey, AlipayPublicKey: cfg.Payment.Alipay.AlipayPublicKey, IsProd: cfg.Payment.Alipay.IsProd, NotifyURL: cfg.Payment.Alipay.NotifyURL, ReturnURL: cfg.Payment.Alipay.ReturnURL},
+		paymentLog,
+	)
+	walletHandler := handler.NewWalletHandler(walletSvc, billingSvc, defaultPaymentPvd)
+	paymentHandler := handler.NewPaymentHandler(paymentRegistry, walletSvc, paymentLog)
 
 	// Initialize WebSocket hub with configurable limits.
 	wsCfg := ws.DefaultConfig()
@@ -227,6 +263,13 @@ func Setup(ctx context.Context, db *gorm.DB, rdb *redis.Client, store storage.Ob
 
 	// WebSocket endpoint (JWT validated via query parameter, not middleware).
 	r.GET("/api/v1/ws", wsHandler.Connect)
+
+	// Payment notification callback routes (no auth, verified by provider signature).
+	paymentRoutes := r.Group("/api/v1/payment/notify")
+	{
+		paymentRoutes.POST("/wechat", paymentHandler.WechatNotify)
+		paymentRoutes.POST("/alipay", paymentHandler.AlipayNotify)
+	}
 
 	// Authenticated API v1 route group.
 	authGroup := r.Group("/api/v1")

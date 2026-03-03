@@ -2,6 +2,7 @@ package payment
 
 import (
 	"context"
+	"net/http"
 
 	"github.com/shopspring/decimal"
 )
@@ -63,10 +64,11 @@ type NotifyResult struct {
 	Channel    string          `json:"channel"`
 }
 
-// Provider defines the abstract interface for third-party payment platforms.
-// Implementations can support YunGouOS, gopay, xunhupay, or any other provider.
+// Provider defines the abstract interface for payment platforms.
+// Supports WeChat Pay V3 service provider mode, Alipay ISV mode,
+// and other third-party providers through a unified interface.
 type Provider interface {
-	// Name returns the provider identifier (e.g., "yungouos", "xunhupay").
+	// Name returns the provider identifier (e.g., "wechat", "alipay").
 	Name() string
 
 	// CreateOrder initiates a payment order and returns a pay URL or QR code.
@@ -79,8 +81,9 @@ type Provider interface {
 	Transfer(ctx context.Context, req TransferRequest) (*TransferResponse, error)
 
 	// ParseNotify parses an async payment notification from the provider.
-	ParseNotify(ctx context.Context, body []byte) (*NotifyResult, error)
+	// Accepts the raw HTTP request for SDK-native signature verification.
+	ParseNotify(ctx context.Context, r *http.Request) (*NotifyResult, error)
 
 	// VerifyNotify verifies the signature of a payment notification.
-	VerifyNotify(ctx context.Context, body []byte) (bool, error)
+	VerifyNotify(ctx context.Context, r *http.Request) (bool, error)
 }

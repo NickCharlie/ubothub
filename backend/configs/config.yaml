@@ -80,3 +80,23 @@ websocket:
   read_buffer_size: 4096           # bytes
   write_buffer_size: 4096          # bytes
   max_message_size: 8192           # bytes, max inbound message size
+
+payment:
+  wechat:
+    enabled: false
+    sp_mch_id: ""                  # service provider merchant ID
+    sp_app_id: ""                  # service provider app ID
+    sub_mch_id: ""                 # sub-merchant ID (platform merchant)
+    sub_app_id: ""                 # sub-merchant app ID (optional)
+    serial_no: ""                  # API certificate serial number
+    api_v3_key: ""                 # APIv3 key
+    private_key: ""                # merchant API certificate private key (PEM content)
+    notify_url: ""                 # e.g., https://api.ubothub.com/api/v1/payment/notify/wechat
+  alipay:
+    enabled: false
+    app_id: ""                     # ISV app ID
+    private_key: ""                # app private key (RSA2 PKCS1)
+    alipay_public_key: ""          # alipay public key for signature verification
+    is_prod: false                 # true for production, false for sandbox
+    notify_url: ""                 # e.g., https://api.ubothub.com/api/v1/payment/notify/alipay
+    return_url: ""                 # e.g., https://ubothub.com/payment/success
