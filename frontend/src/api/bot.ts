@@ -1,13 +1,21 @@
 import http from "./http";
 
+// AstrBot-specific configuration stored in the bot's JSONB config field.
+export interface AstrBotConfig {
+  api_key?: string;
+  platform?: string;
+}
+
 export interface Bot {
   id: string;
   name: string;
   description: string;
   framework: string;
   webhook_url: string;
+  config: string;
+  visibility: string;
   status: string;
-  is_public: boolean;
+  last_active_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -21,15 +29,16 @@ export interface CreateBotParams {
   description?: string;
   framework: string;
   webhook_url?: string;
-  is_public?: boolean;
+  config?: string;
+  visibility?: string;
 }
 
 export interface UpdateBotParams {
   name?: string;
   description?: string;
   webhook_url?: string;
-  is_public?: boolean;
-  config?: Record<string, any>;
+  visibility?: string;
+  config?: string;
 }
 
 export const botApi = {

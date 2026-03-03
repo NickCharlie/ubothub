@@ -1,9 +1,22 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Bot, Plus, Search, Trash2 } from "lucide-react";
+import { Bot, Plus, Search, Trash2, Key, Globe, Lock } from "lucide-react";
 import { botApi, type Bot as BotType, type CreateBotParams } from "@/api/bot";
 import { Modal, Form, Input, Select, Switch, message } from "antd";
+
+const FRAMEWORKS = [
+  {
+    value: "astrbot",
+    label: "AstrBot",
+    description: "Connect via AstrBot HTTP API",
+  },
+  {
+    value: "custom",
+    label: "Custom Webhook",
+    description: "Generic webhook integration",
+  },
+] as const;
 
 export default function BotListPage() {
   const navigate = useNavigate();
@@ -14,6 +27,7 @@ export default function BotListPage() {
   const [search, setSearch] = useState("");
   const [showCreate, setShowCreate] = useState(false);
   const [form] = Form.useForm();
+  const selectedFramework = Form.useWatch("framework", form);
 
   const loadBots = async () => {
     setLoading(true);
@@ -35,18 +49,54 @@ export default function BotListPage() {
   const handleCreate = async () => {
     try {
       const values = await form.validateFields();
+
+      // Build framework-specific config JSON.
+      const config: Record<string, string> = {};
+      if (values.framework === "astrbot") {
+        if (values.api_key) config.api_key = values.api_key;
+        if (values.platform) config.platform = values.platform;
+      }
+
       const params: CreateBotParams = {
         name: values.name,
         description: values.description,
         framework: values.framework,
         webhook_url: values.webhook_url,
-        is_public: values.is_public || false,
+        visibility: values.is_public ? "public" : "private",
+        config:
+          Object.keys(config).length > 0 ? JSON.stringify(config) : undefined,
       };
-      await botApi.create(params);
+      const res = await botApi.create(params);
+      const created = res.data.data;
+
       message.success("Bot created successfully");
       setShowCreate(false);
       form.resetFields();
       loadBots();
+
+      // Show the access token to the user (only shown once on creation).
+      if (created?.access_token) {
+        Modal.info({
+          title: "Bot Access Token",
+          width: 520,
+          content: (
+            <div className="mt-3">
+              <p
+                className="text-sm mb-3"
+                style={{ color: "rgba(255,255,255,0.5)" }}
+              >
+                Save this token securely. It won't be shown again.
+              </p>
+              <code
+                className="block p-3 rounded-lg text-xs font-mono break-all select-all"
+                style={{ background: "rgba(0,0,0,0.3)" }}
+              >
+                {created.access_token}
+              </code>
+            </div>
+          ),
+        });
+      }
     } catch {
       // validation or API error
     }
@@ -179,6 +229,11 @@ export default function BotListPage() {
                 >
                   {bot.status}
                 </span>
+                {bot.visibility === "public" ? (
+                  <Globe size={12} className="text-white/30" />
+                ) : (
+                  <Lock size={12} className="text-white/30" />
+                )}
               </div>
             </motion.div>
           ))}
@@ -191,10 +246,19 @@ export default function BotListPage() {
         title="Create Bot"
         okText="Create"
         onOk={handleCreate}
-        onCancel={() => setShowCreate(false)}
+        onCancel={() => {
+          setShowCreate(false);
+          form.resetFields();
+        }}
         destroyOnClose
+        width={480}
       >
-        <Form form={form} layout="vertical" className="mt-4">
+        <Form
+          form={form}
+          layout="vertical"
+          className="mt-4"
+          initialValues={{ framework: "astrbot", platform: "ubothub" }}
+        >
           <Form.Item
             name="name"
             label="Name"
@@ -203,7 +267,7 @@ export default function BotListPage() {
             <Input placeholder="My Bot" />
           </Form.Item>
           <Form.Item name="description" label="Description">
-            <Input.TextArea placeholder="What does this bot do?" rows={3} />
+            <Input.TextArea placeholder="What does this bot do?" rows={2} />
           </Form.Item>
           <Form.Item
             name="framework"
@@ -211,13 +275,71 @@ export default function BotListPage() {
             rules={[{ required: true, message: "Select a framework" }]}
           >
             <Select placeholder="Select framework">
-              <Select.Option value="astrbot">AstrBot</Select.Option>
-              <Select.Option value="generic">Generic</Select.Option>
+              {FRAMEWORKS.map((f) => (
+                <Select.Option key={f.value} value={f.value}>
+                  <div>
+                    <span>{f.label}</span>
+                    <span
+                      className="text-xs ml-2"
+                      style={{ color: "rgba(255,255,255,0.35)" }}
+                    >
+                      {f.description}
+                    </span>
+                  </div>
+                </Select.Option>
+              ))}
             </Select>
           </Form.Item>
-          <Form.Item name="webhook_url" label="Webhook URL">
-            <Input placeholder="https://your-bot.example.com/webhook" />
-          </Form.Item>
+
+          {/* AstrBot-specific fields */}
+          {selectedFramework === "astrbot" && (
+            <>
+              <Form.Item
+                name="webhook_url"
+                label="AstrBot API Base URL"
+                rules={[
+                  { required: true, message: "AstrBot base URL is required" },
+                  { type: "url", message: "Must be a valid URL" },
+                ]}
+                extra="The HTTP API base URL of your AstrBot instance (e.g. http://localhost:6185)"
+              >
+                <Input placeholder="http://localhost:6185" />
+              </Form.Item>
+              <Form.Item
+                name="api_key"
+                label="API Key"
+                extra="AstrBot auth token (format: abk_...). Will be encrypted before storage."
+              >
+                <Input.Password
+                  placeholder="abk_..."
+                  prefix={<Key size={14} className="text-gray-400" />}
+                />
+              </Form.Item>
+              <Form.Item
+                name="platform"
+                label="Platform ID"
+                extra="Platform identifier sent to AstrBot (default: ubothub)"
+              >
+                <Input placeholder="ubothub" />
+              </Form.Item>
+            </>
+          )}
+
+          {/* Custom webhook fields */}
+          {selectedFramework === "custom" && (
+            <Form.Item
+              name="webhook_url"
+              label="Webhook URL"
+              rules={[
+                { required: true, message: "Webhook URL is required" },
+                { type: "url", message: "Must be a valid URL" },
+              ]}
+              extra="The endpoint that will receive message payloads"
+            >
+              <Input placeholder="https://your-bot.example.com/webhook" />
+            </Form.Item>
+          )}
+
           <Form.Item name="is_public" label="Public" valuePropName="checked">
             <Switch />
           </Form.Item>

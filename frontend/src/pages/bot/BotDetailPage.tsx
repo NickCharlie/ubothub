@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
@@ -13,11 +13,24 @@ import {
   Trash2,
   Eye,
   EyeOff,
+  Key,
+  Globe,
+  Lock,
 } from "lucide-react";
 import { botApi, type Bot as BotType, type UpdateBotParams } from "@/api/bot";
 import { useAuthStore } from "@/stores/auth";
 import { Modal, Form, Input, Switch, message, Tabs } from "antd";
 import BotPricingConfig from "@/components/bot/BotPricingConfig";
+
+/** Parse the JSONB config string into an object. */
+function parseConfig(raw: string): Record<string, string> {
+  try {
+    const parsed = JSON.parse(raw || "{}");
+    return typeof parsed === "object" && parsed !== null ? parsed : {};
+  } catch {
+    return {};
+  }
+}
 
 export default function BotDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -41,6 +54,8 @@ export default function BotDetailPage() {
     content: string;
     timestamp: number;
   }
+
+  const botConfig = useMemo(() => parseConfig(bot?.config || "{}"), [bot?.config]);
 
   const loadBot = useCallback(async () => {
     if (!id) return;
@@ -135,15 +150,40 @@ export default function BotDetailPage() {
     setInputMsg("");
   };
 
+  const openEditModal = () => {
+    if (!bot) return;
+    const cfg = parseConfig(bot.config);
+    form.setFieldsValue({
+      name: bot.name,
+      description: bot.description,
+      webhook_url: bot.webhook_url,
+      is_public: bot.visibility === "public",
+      // AstrBot-specific fields from config
+      api_key: cfg.api_key || "",
+      platform: cfg.platform || "ubothub",
+    });
+    setEditing(true);
+  };
+
   const handleUpdate = async () => {
     if (!bot) return;
     try {
       const values = await form.validateFields();
+
+      // Rebuild config JSON for AstrBot framework.
+      const config: Record<string, string> = {};
+      if (bot.framework === "astrbot") {
+        if (values.api_key) config.api_key = values.api_key;
+        if (values.platform) config.platform = values.platform;
+      }
+
       const params: UpdateBotParams = {
         name: values.name,
         description: values.description,
         webhook_url: values.webhook_url,
-        is_public: values.is_public,
+        visibility: values.is_public ? "public" : "private",
+        config:
+          Object.keys(config).length > 0 ? JSON.stringify(config) : undefined,
       };
       await botApi.update(bot.id, params);
       message.success("Bot updated");
@@ -272,6 +312,51 @@ export default function BotDetailPage() {
       label: "Settings",
       children: (
         <div className="space-y-6">
+          {/* Connection info */}
+          <div className="glass rounded-xl p-5">
+            <h3 className="text-sm font-medium mb-3 text-white/70">
+              Connection
+            </h3>
+            <div className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-xs">
+              <span className="text-white/40">Framework</span>
+              <span className="text-white/70">{bot.framework}</span>
+              <span className="text-white/40">
+                {bot.framework === "astrbot" ? "API Base URL" : "Webhook URL"}
+              </span>
+              <span className="text-white/70 font-mono truncate">
+                {bot.webhook_url || "—"}
+              </span>
+              {bot.framework === "astrbot" && (
+                <>
+                  <span className="text-white/40">API Key</span>
+                  <span className="text-white/70 font-mono">
+                    {botConfig.api_key
+                      ? botConfig.api_key.startsWith("***")
+                        ? botConfig.api_key
+                        : "••••••••"
+                      : "Not configured"}
+                  </span>
+                  <span className="text-white/40">Platform</span>
+                  <span className="text-white/70">
+                    {botConfig.platform || "ubothub"}
+                  </span>
+                </>
+              )}
+              <span className="text-white/40">Visibility</span>
+              <span className="text-white/70 flex items-center gap-1.5">
+                {bot.visibility === "public" ? (
+                  <>
+                    <Globe size={12} /> Public
+                  </>
+                ) : (
+                  <>
+                    <Lock size={12} /> Private
+                  </>
+                )}
+              </span>
+            </div>
+          </div>
+
           {/* Access Token */}
           <div className="glass rounded-xl p-5">
             <h3 className="text-sm font-medium mb-3 text-white/70">
@@ -309,6 +394,9 @@ export default function BotDetailPage() {
             <h3 className="text-sm font-medium mb-3 text-white/70">
               Webhook Endpoint
             </h3>
+            <p className="text-xs text-white/40 mb-2">
+              Configure this URL in your bot framework to forward messages to UBotHub.
+            </p>
             <div className="flex items-center gap-2">
               <code className="flex-1 text-xs bg-black/30 px-3 py-2 rounded-lg font-mono text-white/60 overflow-x-auto">
                 {`${window.location.origin}/api/v1/gateway/webhook/${(bot as any).access_token || "<token>"}`}
@@ -366,20 +454,13 @@ export default function BotDetailPage() {
               <h1 className="text-xl font-semibold">{bot.name}</h1>
               <p className="text-xs text-white/40">
                 {bot.framework} · {bot.status}
+                {bot.visibility === "public" && " · Public"}
               </p>
             </div>
           </div>
         </div>
         <button
-          onClick={() => {
-            form.setFieldsValue({
-              name: bot.name,
-              description: bot.description,
-              webhook_url: bot.webhook_url,
-              is_public: bot.is_public,
-            });
-            setEditing(true);
-          }}
+          onClick={openEditModal}
           className="glass-btn-ghost h-9 px-4 rounded-xl text-sm gap-2"
         >
           <Settings size={14} />
@@ -409,6 +490,7 @@ export default function BotDetailPage() {
         onOk={handleUpdate}
         onCancel={() => setEditing(false)}
         destroyOnClose
+        width={480}
       >
         <Form form={form} layout="vertical" className="mt-4">
           <Form.Item name="name" label="Name" rules={[{ required: true }]}>
@@ -417,9 +499,43 @@ export default function BotDetailPage() {
           <Form.Item name="description" label="Description">
             <Input.TextArea rows={3} />
           </Form.Item>
-          <Form.Item name="webhook_url" label="Webhook URL">
-            <Input placeholder="https://your-bot.example.com/webhook" />
+
+          <Form.Item
+            name="webhook_url"
+            label={bot.framework === "astrbot" ? "AstrBot API Base URL" : "Webhook URL"}
+          >
+            <Input
+              placeholder={
+                bot.framework === "astrbot"
+                  ? "http://localhost:6185"
+                  : "https://your-bot.example.com/webhook"
+              }
+            />
           </Form.Item>
+
+          {/* AstrBot-specific fields */}
+          {bot.framework === "astrbot" && (
+            <>
+              <Form.Item
+                name="api_key"
+                label="API Key"
+                extra="Leave empty to keep the existing key unchanged"
+              >
+                <Input.Password
+                  placeholder="abk_..."
+                  prefix={<Key size={14} className="text-gray-400" />}
+                />
+              </Form.Item>
+              <Form.Item
+                name="platform"
+                label="Platform ID"
+                extra="Platform identifier sent to AstrBot"
+              >
+                <Input placeholder="ubothub" />
+              </Form.Item>
+            </>
+          )}
+
           <Form.Item name="is_public" label="Public" valuePropName="checked">
             <Switch />
           </Form.Item>
