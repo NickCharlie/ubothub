@@ -12,6 +12,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Sparkles,
+  UserCog,
 } from "lucide-react";
 import { useAuthStore } from "@/stores/auth";
 
@@ -24,12 +25,39 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { key: "dashboard", label: "Dashboard", icon: <LayoutDashboard size={20} />, path: "/dashboard" },
+  {
+    key: "dashboard",
+    label: "Dashboard",
+    icon: <LayoutDashboard size={20} />,
+    path: "/dashboard",
+  },
   { key: "bots", label: "Bots", icon: <Bot size={20} />, path: "/bots" },
-  { key: "avatars", label: "Avatars", icon: <Sparkles size={20} />, path: "/avatars" },
+  {
+    key: "avatars",
+    label: "Avatars",
+    icon: <Sparkles size={20} />,
+    path: "/avatars",
+  },
   { key: "assets", label: "Assets", icon: <Box size={20} />, path: "/assets" },
-  { key: "wallet", label: "Wallet", icon: <Wallet size={20} />, path: "/wallet" },
-  { key: "admin", label: "Admin", icon: <Shield size={20} />, path: "/admin", adminOnly: true },
+  {
+    key: "wallet",
+    label: "Wallet",
+    icon: <Wallet size={20} />,
+    path: "/wallet",
+  },
+  {
+    key: "profile",
+    label: "Profile",
+    icon: <UserCog size={20} />,
+    path: "/profile",
+  },
+  {
+    key: "admin",
+    label: "Admin",
+    icon: <Shield size={20} />,
+    path: "/admin",
+    adminOnly: true,
+  },
 ];
 
 export default function AppLayout() {
@@ -39,11 +67,11 @@ export default function AppLayout() {
   const { user, logout } = useAuthStore();
 
   const filteredNavItems = navItems.filter(
-    (item) => !item.adminOnly || user?.role === "admin"
+    (item) => !item.adminOnly || user?.role === "admin",
   );
 
   const activeKey = filteredNavItems.find((item) =>
-    location.pathname.startsWith(item.path)
+    location.pathname.startsWith(item.path),
   )?.key;
 
   const handleLogout = async () => {
@@ -130,7 +158,11 @@ export default function AppLayout() {
               onClick={() => setCollapsed(!collapsed)}
               className="flex-1 flex items-center justify-center p-2 rounded-lg text-white/40 hover:text-white/70 hover:bg-white/[0.04] transition-colors"
             >
-              {collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+              {collapsed ? (
+                <ChevronRight size={16} />
+              ) : (
+                <ChevronLeft size={16} />
+              )}
             </button>
             <button
               onClick={handleLogout}

@@ -5,6 +5,12 @@ import LoginPage from "@/pages/auth/LoginPage";
 import RegisterPage from "@/pages/auth/RegisterPage";
 import DashboardPage from "@/pages/dashboard/DashboardPage";
 import BotListPage from "@/pages/bot/BotListPage";
+import BotDetailPage from "@/pages/bot/BotDetailPage";
+import AvatarListPage from "@/pages/avatar/AvatarListPage";
+import AssetListPage from "@/pages/asset/AssetListPage";
+import WalletPage from "@/pages/wallet/WalletPage";
+import AdminPage from "@/pages/admin/AdminPage";
+import ProfilePage from "@/pages/profile/ProfilePage";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { accessToken } = useAuthStore();
@@ -39,23 +45,17 @@ export default function AppRouter() {
       >
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/bots" element={<BotListPage />} />
-        <Route path="/avatars" element={<Placeholder title="Avatars" />} />
-        <Route path="/assets" element={<Placeholder title="Assets" />} />
-        <Route path="/wallet" element={<Placeholder title="Wallet" />} />
-        <Route path="/admin" element={<Placeholder title="Admin" />} />
+        <Route path="/bots/:id" element={<BotDetailPage />} />
+        <Route path="/avatars" element={<AvatarListPage />} />
+        <Route path="/assets" element={<AssetListPage />} />
+        <Route path="/wallet" element={<WalletPage />} />
+        <Route path="/profile" element={<ProfilePage />} />
+        <Route path="/admin" element={<AdminPage />} />
       </Route>
 
       {/* Root redirect */}
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
-  );
-}
-
-function Placeholder({ title }: { title: string }) {
-  return (
-    <div className="flex items-center justify-center h-64 text-white/30">
-      <p className="text-lg">{title} - Coming soon</p>
-    </div>
   );
 }
