@@ -6,7 +6,10 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
 	"github.com/ubothub/backend/internal/config"
+	"github.com/ubothub/backend/internal/handler"
 	"github.com/ubothub/backend/internal/middleware"
+	"github.com/ubothub/backend/internal/repository"
+	"github.com/ubothub/backend/internal/service"
 	"github.com/ubothub/backend/pkg/logger"
 	"github.com/ubothub/backend/pkg/token"
 	"go.uber.org/zap"
@@ -39,7 +42,7 @@ func Setup(db *gorm.DB, rdb *redis.Client, cfg *config.Config, rootLogger *zap.L
 		})
 	})
 
-	// JWT token manager for authenticated routes.
+	// JWT token manager.
 	tokenMgr := token.NewManager(
 		cfg.JWT.Secret,
 		cfg.JWT.AccessTokenDuration(),
@@ -47,16 +50,41 @@ func Setup(db *gorm.DB, rdb *redis.Client, cfg *config.Config, rootLogger *zap.L
 		cfg.JWT.Issuer,
 	)
 
-	// Public API v1 route group (auth endpoints).
-	_ = r.Group("/api/v1/auth")
-	// Auth route registration will be added in subsequent phases.
+	// Initialize repositories.
+	userRepo := repository.NewUserRepository(db)
+
+	// Initialize services.
+	authLog := logger.Named(rootLogger, "auth")
+	userLog := logger.Named(rootLogger, "handler")
+	authSvc := service.NewAuthService(userRepo, tokenMgr, rdb, authLog)
+	userSvc := service.NewUserService(userRepo, userLog)
+
+	// Initialize handlers.
+	authHandler := handler.NewAuthHandler(authSvc)
+	userHandler := handler.NewUserHandler(userSvc)
+
+	// Public auth routes with stricter rate limiting.
+	authRoutes := r.Group("/api/v1/auth")
+	authRoutes.Use(middleware.RateLimiter(rdb, middleware.RateLimiterConfig{
+		MaxRequests: 10,
+		Window:      time.Minute,
+		KeyPrefix:   "rl:auth",
+	}))
+	{
+		authRoutes.POST("/register", authHandler.Register)
+		authRoutes.POST("/login", authHandler.Login)
+		authRoutes.POST("/refresh", authHandler.Refresh)
+		authRoutes.POST("/logout", authHandler.Logout)
+	}
 
 	// Authenticated API v1 route group.
 	authGroup := r.Group("/api/v1")
 	authGroup.Use(middleware.JWTAuth(tokenMgr, rdb))
 	{
-		// Route registration for each module will be added in subsequent phases.
-		_ = authGroup
+		// User profile routes.
+		authGroup.GET("/users/me", userHandler.GetMe)
+		authGroup.PUT("/users/me", userHandler.UpdateMe)
+		authGroup.PUT("/users/me/password", userHandler.ChangePassword)
 	}
 
 	// Admin-only API v1 route group.
