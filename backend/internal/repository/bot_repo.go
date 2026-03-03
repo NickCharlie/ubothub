@@ -3,7 +3,7 @@ package repository
 import (
 	"context"
 
-	"github.com/ubothub/backend/internal/model"
+	"github.com/NickCharlie/ubothub/backend/internal/model"
 	"gorm.io/gorm"
 )
 

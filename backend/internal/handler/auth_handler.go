@@ -5,10 +5,10 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"github.com/ubothub/backend/internal/dto/request"
-	"github.com/ubothub/backend/internal/service"
-	"github.com/ubothub/backend/pkg/errcode"
-	"github.com/ubothub/backend/pkg/response"
+	"github.com/NickCharlie/ubothub/backend/internal/dto/request"
+	"github.com/NickCharlie/ubothub/backend/internal/service"
+	"github.com/NickCharlie/ubothub/backend/pkg/errcode"
+	"github.com/NickCharlie/ubothub/backend/pkg/response"
 )
 
 // AuthHandler handles authentication HTTP endpoints.

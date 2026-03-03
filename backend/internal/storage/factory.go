@@ -3,7 +3,7 @@ package storage
 import (
 	"fmt"
 
-	"github.com/ubothub/backend/internal/config"
+	"github.com/NickCharlie/ubothub/backend/internal/config"
 )
 
 // NewFromConfig creates an ObjectStorage implementation based on the

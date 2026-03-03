@@ -1,4 +1,4 @@
-module github.com/ubothub/backend
+module github.com/NickCharlie/ubothub/backend
 
 go 1.25.4
 

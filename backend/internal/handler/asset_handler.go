@@ -5,12 +5,12 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"github.com/ubothub/backend/internal/dto/request"
-	"github.com/ubothub/backend/internal/dto/response"
-	"github.com/ubothub/backend/internal/model"
-	"github.com/ubothub/backend/internal/service"
-	"github.com/ubothub/backend/pkg/errcode"
-	resp "github.com/ubothub/backend/pkg/response"
+	"github.com/NickCharlie/ubothub/backend/internal/dto/request"
+	"github.com/NickCharlie/ubothub/backend/internal/dto/response"
+	"github.com/NickCharlie/ubothub/backend/internal/model"
+	"github.com/NickCharlie/ubothub/backend/internal/service"
+	"github.com/NickCharlie/ubothub/backend/pkg/errcode"
+	resp "github.com/NickCharlie/ubothub/backend/pkg/response"
 )
 
 // AssetHandler handles asset management HTTP endpoints.

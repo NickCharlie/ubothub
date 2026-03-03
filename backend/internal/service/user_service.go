@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/ubothub/backend/internal/model"
-	"github.com/ubothub/backend/internal/repository"
-	"github.com/ubothub/backend/pkg/hash"
+	"github.com/NickCharlie/ubothub/backend/internal/model"
+	"github.com/NickCharlie/ubothub/backend/internal/repository"
+	"github.com/NickCharlie/ubothub/backend/pkg/hash"
 	"go.uber.org/zap"
 )
 

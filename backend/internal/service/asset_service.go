@@ -8,9 +8,9 @@ import (
 	"time"
 
 	"github.com/rs/xid"
-	"github.com/ubothub/backend/internal/model"
-	"github.com/ubothub/backend/internal/repository"
-	"github.com/ubothub/backend/internal/storage"
+	"github.com/NickCharlie/ubothub/backend/internal/model"
+	"github.com/NickCharlie/ubothub/backend/internal/repository"
+	"github.com/NickCharlie/ubothub/backend/internal/storage"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 )

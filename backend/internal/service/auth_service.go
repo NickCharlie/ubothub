@@ -7,10 +7,10 @@ import (
 
 	"github.com/redis/go-redis/v9"
 	"github.com/rs/xid"
-	"github.com/ubothub/backend/internal/model"
-	"github.com/ubothub/backend/internal/repository"
-	"github.com/ubothub/backend/pkg/hash"
-	"github.com/ubothub/backend/pkg/token"
+	"github.com/NickCharlie/ubothub/backend/internal/model"
+	"github.com/NickCharlie/ubothub/backend/internal/repository"
+	"github.com/NickCharlie/ubothub/backend/pkg/hash"
+	"github.com/NickCharlie/ubothub/backend/pkg/token"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 )

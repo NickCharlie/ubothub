@@ -7,8 +7,8 @@ import (
 	"fmt"
 
 	"github.com/rs/xid"
-	"github.com/ubothub/backend/internal/model"
-	"github.com/ubothub/backend/internal/repository"
+	"github.com/NickCharlie/ubothub/backend/internal/model"
+	"github.com/NickCharlie/ubothub/backend/internal/repository"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 )

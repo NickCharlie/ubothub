@@ -8,7 +8,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
-	"github.com/ubothub/backend/pkg/token"
+	"github.com/NickCharlie/ubothub/backend/pkg/token"
 )
 
 // JWTAuth returns a middleware that validates JWT bearer tokens from the

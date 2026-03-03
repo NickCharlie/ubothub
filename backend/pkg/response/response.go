@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/ubothub/backend/pkg/errcode"
+	"github.com/NickCharlie/ubothub/backend/pkg/errcode"
 )
 
 // Response represents the standard API response structure.

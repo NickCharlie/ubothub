@@ -10,11 +10,11 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/ubothub/backend/internal/config"
-	"github.com/ubothub/backend/internal/model"
-	"github.com/ubothub/backend/internal/router"
-	"github.com/ubothub/backend/internal/storage"
-	"github.com/ubothub/backend/pkg/logger"
+	"github.com/NickCharlie/ubothub/backend/internal/config"
+	"github.com/NickCharlie/ubothub/backend/internal/model"
+	"github.com/NickCharlie/ubothub/backend/internal/router"
+	"github.com/NickCharlie/ubothub/backend/internal/storage"
+	"github.com/NickCharlie/ubothub/backend/pkg/logger"
 
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
