@@ -8,6 +8,7 @@ type BotResponse struct {
 	Name         string     `json:"name"`
 	Description  string     `json:"description"`
 	Framework    string     `json:"framework"`
+	Visibility   string     `json:"visibility"`
 	Status       string     `json:"status"`
 	WebhookURL   string     `json:"webhook_url"`
 	Config       string     `json:"config"`

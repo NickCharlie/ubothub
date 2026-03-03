@@ -13,6 +13,8 @@ type BotRepository interface {
 	FindByID(ctx context.Context, id string) (*model.Bot, error)
 	FindByUserID(ctx context.Context, userID string, offset, limit int) ([]*model.Bot, int64, error)
 	FindByAccessToken(ctx context.Context, token string) (*model.Bot, error)
+	FindPublic(ctx context.Context, offset, limit int) ([]*model.Bot, int64, error)
+	FindPublicByID(ctx context.Context, id string) (*model.Bot, error)
 	Update(ctx context.Context, bot *model.Bot) error
 	Delete(ctx context.Context, id string) error
 	CountByUserID(ctx context.Context, userID string) (int64, error)
@@ -76,4 +78,29 @@ func (r *botRepository) CountByUserID(ctx context.Context, userID string) (int64
 	var count int64
 	err := r.db.WithContext(ctx).Model(&model.Bot{}).Where("user_id = ?", userID).Count(&count).Error
 	return count, err
+}
+
+func (r *botRepository) FindPublic(ctx context.Context, offset, limit int) ([]*model.Bot, int64, error) {
+	var bots []*model.Bot
+	var total int64
+
+	query := r.db.WithContext(ctx).Model(&model.Bot{}).Where("visibility = ?", model.BotVisibilityPublic)
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+	if err := query.Order("created_at DESC").Offset(offset).Limit(limit).Find(&bots).Error; err != nil {
+		return nil, 0, err
+	}
+	return bots, total, nil
+}
+
+func (r *botRepository) FindPublicByID(ctx context.Context, id string) (*model.Bot, error) {
+	var bot model.Bot
+	err := r.db.WithContext(ctx).
+		Where("id = ? AND visibility = ?", id, model.BotVisibilityPublic).
+		First(&bot).Error
+	if err != nil {
+		return nil, err
+	}
+	return &bot, nil
 }

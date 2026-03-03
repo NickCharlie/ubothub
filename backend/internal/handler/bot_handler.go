@@ -167,6 +167,7 @@ func toBotResponse(bot *model.Bot) response.BotResponse {
 		Name:         bot.Name,
 		Description:  bot.Description,
 		Framework:    bot.Framework,
+		Visibility:   bot.Visibility,
 		Status:       bot.Status,
 		WebhookURL:   bot.WebhookURL,
 		Config:       bot.Config,
@@ -174,4 +175,52 @@ func toBotResponse(bot *model.Bot) response.BotResponse {
 		CreatedAt:    bot.CreatedAt.Format("2006-01-02T15:04:05Z"),
 		UpdatedAt:    bot.UpdatedAt.Format("2006-01-02T15:04:05Z"),
 	}
+}
+
+// ListPublic handles GET /api/v1/plaza/bots.
+// Returns public bots for the bot plaza (no auth required).
+func (h *BotHandler) ListPublic(c *gin.Context) {
+	var req request.ListBotRequest
+	if err := c.ShouldBindQuery(&req); err != nil {
+		resp.ValidationError(c, err.Error())
+		return
+	}
+
+	if req.Page == 0 {
+		req.Page = 1
+	}
+	if req.PageSize == 0 {
+		req.PageSize = 20
+	}
+
+	bots, total, err := h.botSvc.ListPublicBots(c.Request.Context(), req.Page, req.PageSize)
+	if err != nil {
+		resp.Error(c, errcode.ErrInternalServer)
+		return
+	}
+
+	items := make([]response.BotResponse, 0, len(bots))
+	for _, bot := range bots {
+		items = append(items, toBotResponse(bot))
+	}
+
+	resp.OKPaged(c, items, total, req.Page, req.PageSize)
+}
+
+// GetPublic handles GET /api/v1/plaza/bots/:id.
+// Returns a public bot's details (no auth required).
+func (h *BotHandler) GetPublic(c *gin.Context) {
+	botID := c.Param("id")
+
+	bot, err := h.botSvc.GetPublicBot(c.Request.Context(), botID)
+	if err != nil {
+		if errors.Is(err, service.ErrBotNotFound) {
+			resp.Error(c, errcode.ErrBotNotFound)
+			return
+		}
+		resp.Error(c, errcode.ErrInternalServer)
+		return
+	}
+
+	resp.OK(c, toBotResponse(bot))
 }

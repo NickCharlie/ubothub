@@ -271,3 +271,27 @@ func (s *AvatarService) UpdateActionMapping(ctx context.Context, avatarID, userI
 
 	return nil
 }
+
+// GetAvatarPublic returns an avatar with assets for public preview (no ownership check).
+// Only returns avatars that are bound to a public bot.
+func (s *AvatarService) GetAvatarPublic(ctx context.Context, avatarID string) (*model.AvatarConfig, error) {
+	avatar, err := s.avatarRepo.FindByIDWithAssets(ctx, avatarID)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, ErrAvatarNotFound
+		}
+		return nil, fmt.Errorf("find avatar: %w", err)
+	}
+
+	// Only allow viewing if the avatar's bot is public.
+	if avatar.BotID != "" {
+		bot, err := s.botRepo.FindByID(ctx, avatar.BotID)
+		if err != nil || bot.Visibility != "public" {
+			return nil, ErrAvatarNotFound
+		}
+	} else {
+		return nil, ErrAvatarNotFound
+	}
+
+	return avatar, nil
+}

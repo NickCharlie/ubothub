@@ -184,6 +184,30 @@ func (s *BotService) GetBotByAccessToken(ctx context.Context, token string) (*mo
 	return bot, nil
 }
 
+// ListPublicBots returns paginated public bots for the plaza.
+func (s *BotService) ListPublicBots(ctx context.Context, page, pageSize int) ([]*model.Bot, int64, error) {
+	if page < 1 {
+		page = 1
+	}
+	if pageSize < 1 || pageSize > 100 {
+		pageSize = 20
+	}
+	offset := (page - 1) * pageSize
+	return s.botRepo.FindPublic(ctx, offset, pageSize)
+}
+
+// GetPublicBot returns a public bot by ID (no ownership check).
+func (s *BotService) GetPublicBot(ctx context.Context, botID string) (*model.Bot, error) {
+	bot, err := s.botRepo.FindPublicByID(ctx, botID)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, ErrBotNotFound
+		}
+		return nil, fmt.Errorf("find public bot: %w", err)
+	}
+	return bot, nil
+}
+
 // generateAccessToken creates a cryptographically random 32-byte hex token.
 func generateAccessToken() (string, error) {
 	b := make([]byte, 32)

@@ -240,3 +240,17 @@ func handleAvatarError(c *gin.Context, err error) {
 		resp.Error(c, errcode.ErrInternalServer)
 	}
 }
+
+// GetPublic handles GET /api/v1/plaza/avatars/:id.
+// Returns avatar with its 3D model assets for public preview (guests can view, not chat).
+func (h *AvatarHandler) GetPublic(c *gin.Context) {
+	avatarID := c.Param("id")
+
+	avatar, err := h.avatarSvc.GetAvatarPublic(c.Request.Context(), avatarID)
+	if err != nil {
+		handleAvatarError(c, err)
+		return
+	}
+
+	resp.OK(c, toAvatarResponse(avatar))
+}
