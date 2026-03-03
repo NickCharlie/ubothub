@@ -149,10 +149,13 @@ func Setup(ctx context.Context, db *gorm.DB, rdb *redis.Client, store storage.Ob
 	walletRepo := repository.NewWalletRepository(db)
 	txnRepo := repository.NewTransactionRepository(db)
 	pricingRepo := repository.NewBotPricingRepository(db)
+	orderRepo := repository.NewPendingOrderRepository(db)
 	walletLog := logger.Named(rootLogger, "wallet")
 	walletSvc := service.NewWalletService(walletRepo, txnRepo, db, walletLog)
 	billingLog := logger.Named(rootLogger, "billing")
 	billingSvc := service.NewBillingService(pricingRepo, walletSvc, botRepo, billingLog)
+	orderLog := logger.Named(rootLogger, "order")
+	orderSvc := service.NewOrderService(orderRepo, walletRepo, walletSvc, db, orderLog)
 
 	// Initialize payment provider registry (WeChat Pay V3 + Alipay service provider mode).
 	paymentLog := logger.Named(rootLogger, "payment")
@@ -189,8 +192,8 @@ func Setup(ctx context.Context, db *gorm.DB, rdb *redis.Client, store storage.Ob
 		payment.AlipayConfig{Enabled: cfg.Payment.Alipay.Enabled, AppID: cfg.Payment.Alipay.AppID, PrivateKey: cfg.Payment.Alipay.PrivateKey, AlipayPublicKey: cfg.Payment.Alipay.AlipayPublicKey, IsProd: cfg.Payment.Alipay.IsProd, NotifyURL: cfg.Payment.Alipay.NotifyURL, ReturnURL: cfg.Payment.Alipay.ReturnURL},
 		paymentLog,
 	)
-	walletHandler := handler.NewWalletHandler(walletSvc, billingSvc, defaultPaymentPvd)
-	paymentHandler := handler.NewPaymentHandler(paymentRegistry, walletSvc, paymentLog)
+	walletHandler := handler.NewWalletHandler(walletSvc, billingSvc, orderSvc, defaultPaymentPvd)
+	paymentHandler := handler.NewPaymentHandler(paymentRegistry, orderSvc, paymentLog)
 
 	// Initialize WebSocket hub with configurable limits.
 	wsCfg := ws.DefaultConfig()

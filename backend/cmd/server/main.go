@@ -247,6 +247,7 @@ func autoMigrate(db *gorm.DB) error {
 		&model.Wallet{},
 		&model.Transaction{},
 		&model.BotPricing{},
+		&model.PendingOrder{},
 	)
 }
 

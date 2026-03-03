@@ -12,17 +12,17 @@ import (
 // PaymentHandler handles payment notification callbacks from WeChat/Alipay.
 // These endpoints receive async notifications when payment status changes.
 type PaymentHandler struct {
-	registry  *payment.Registry
-	walletSvc *service.WalletService
-	logger    *zap.Logger
+	registry *payment.Registry
+	orderSvc *service.OrderService
+	logger   *zap.Logger
 }
 
 // NewPaymentHandler creates a new payment notification handler.
-func NewPaymentHandler(registry *payment.Registry, walletSvc *service.WalletService, logger *zap.Logger) *PaymentHandler {
+func NewPaymentHandler(registry *payment.Registry, orderSvc *service.OrderService, logger *zap.Logger) *PaymentHandler {
 	return &PaymentHandler{
-		registry:  registry,
-		walletSvc: walletSvc,
-		logger:    logger,
+		registry: registry,
+		orderSvc: orderSvc,
+		logger:   logger,
 	}
 }
 
@@ -115,15 +115,23 @@ func (h *PaymentHandler) handleNotify(c *gin.Context, providerName string) {
 		return
 	}
 
-	// Step 4: Log the confirmed payment.
-	// In production, this should look up a pending_orders table to map
-	// the order_id to a user_id and call walletSvc.TopUp accordingly.
-	h.logger.Info("payment confirmed",
-		zap.String("provider", providerName),
-		zap.String("order_id", result.OrderID),
-		zap.String("external_id", result.ExternalID),
-		zap.String("amount", result.Amount.String()),
-	)
+	// Step 4: Complete the pending order and top up the user's wallet.
+	// This is idempotent — duplicate notifications will not double-credit.
+	if err := h.orderSvc.CompleteOrder(c.Request.Context(), result.OrderID, result.ExternalID, result.Amount); err != nil {
+		h.logger.Error("failed to complete order",
+			zap.String("provider", providerName),
+			zap.String("order_id", result.OrderID),
+			zap.Error(err),
+		)
+		// Still respond success to avoid provider retries for non-retryable errors.
+	} else {
+		h.logger.Info("payment confirmed and wallet topped up",
+			zap.String("provider", providerName),
+			zap.String("order_id", result.OrderID),
+			zap.String("external_id", result.ExternalID),
+			zap.String("amount", result.Amount.String()),
+		)
+	}
 
 	h.respondSuccess(c, providerName)
 }

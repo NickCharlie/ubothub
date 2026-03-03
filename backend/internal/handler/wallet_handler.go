@@ -18,12 +18,13 @@ import (
 type WalletHandler struct {
 	walletSvc  *service.WalletService
 	billingSvc *service.BillingService
+	orderSvc   *service.OrderService
 	paymentPvd payment.Provider
 }
 
 // NewWalletHandler creates a new wallet handler.
-func NewWalletHandler(walletSvc *service.WalletService, billingSvc *service.BillingService, paymentPvd payment.Provider) *WalletHandler {
-	return &WalletHandler{walletSvc: walletSvc, billingSvc: billingSvc, paymentPvd: paymentPvd}
+func NewWalletHandler(walletSvc *service.WalletService, billingSvc *service.BillingService, orderSvc *service.OrderService, paymentPvd payment.Provider) *WalletHandler {
+	return &WalletHandler{walletSvc: walletSvc, billingSvc: billingSvc, orderSvc: orderSvc, paymentPvd: paymentPvd}
 }
 
 // GetWallet handles GET /api/v1/wallet.
@@ -80,25 +81,33 @@ func (h *WalletHandler) TopUp(c *gin.Context) {
 		return
 	}
 
-	orderID := xid.New().String()
+	// Create a pending order that maps order_id → user_id.
+	order, err := h.orderSvc.CreateOrder(c.Request.Context(), userID, amount, req.Channel, "UBotHub wallet top-up")
+	if err != nil {
+		response.Error(c, errcode.ErrInternalServer)
+		return
+	}
+
 	result, err := h.paymentPvd.CreateOrder(c.Request.Context(), payment.CreateOrderRequest{
-		OrderID:     orderID,
+		OrderID:     order.ID,
 		UserID:      userID,
 		Amount:      amount,
 		Description: "UBotHub wallet top-up",
 		Channel:     req.Channel,
-		NotifyURL:   "/api/v1/payment/notify",
+		NotifyURL:   "/api/v1/payment/notify/" + req.Channel,
 	})
 	if err != nil {
+		// Mark the order as failed since payment provider rejected it.
+		_ = h.orderSvc.FailOrder(c.Request.Context(), order.ID)
 		response.Error(c, errcode.ErrPaymentFailed)
 		return
 	}
 
 	response.OK(c, gin.H{
-		"order_id":   result.OrderID,
-		"pay_url":    result.PayURL,
-		"qr_code":    result.QRCodeURL,
-		"channel":    result.Channel,
+		"order_id": result.OrderID,
+		"pay_url":  result.PayURL,
+		"qr_code":  result.QRCodeURL,
+		"channel":  result.Channel,
 	})
 }
 
