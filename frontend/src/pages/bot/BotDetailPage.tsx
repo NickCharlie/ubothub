@@ -17,6 +17,7 @@ import {
 import { botApi, type Bot as BotType, type UpdateBotParams } from "@/api/bot";
 import { useAuthStore } from "@/stores/auth";
 import { Modal, Form, Input, Switch, message, Tabs } from "antd";
+import BotPricingConfig from "@/components/bot/BotPricingConfig";
 
 export default function BotDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -324,6 +325,9 @@ export default function BotDetailPage() {
               </button>
             </div>
           </div>
+
+          {/* Pricing configuration */}
+          {bot && <BotPricingConfig botId={bot.id} isOwner={true} />}
 
           {/* Danger zone */}
           <div className="glass rounded-xl p-5 border-red-500/20">
