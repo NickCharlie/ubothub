@@ -70,6 +70,7 @@ func Setup(db *gorm.DB, rdb *redis.Client, store storage.ObjectStorage, cfg *con
 	userRepo := repository.NewUserRepository(db)
 	botRepo := repository.NewBotRepository(db)
 	assetRepo := repository.NewAssetRepository(db)
+	avatarRepo := repository.NewAvatarRepository(db)
 
 	// Initialize services.
 	authLog := logger.Named(rootLogger, "auth")
@@ -80,12 +81,15 @@ func Setup(db *gorm.DB, rdb *redis.Client, store storage.ObjectStorage, cfg *con
 	userSvc := service.NewUserService(userRepo, userLog)
 	botSvc := service.NewBotService(botRepo, botLog)
 	assetSvc := service.NewAssetService(assetRepo, store, bucket, assetLog)
+	avatarLog := logger.Named(rootLogger, "avatar")
+	avatarSvc := service.NewAvatarService(avatarRepo, botRepo, avatarLog)
 
 	// Initialize handlers.
 	authHandler := handler.NewAuthHandler(authSvc)
 	userHandler := handler.NewUserHandler(userSvc)
 	botHandler := handler.NewBotHandler(botSvc)
 	assetHandler := handler.NewAssetHandler(assetSvc)
+	avatarHandler := handler.NewAvatarHandler(avatarSvc)
 	gatewayLog := logger.Named(rootLogger, "gateway")
 	gatewayHandler := handler.NewGatewayHandler(botSvc, adapterFactory, eventBus, gatewayLog)
 
@@ -144,6 +148,17 @@ func Setup(db *gorm.DB, rdb *redis.Client, store storage.ObjectStorage, cfg *con
 		authGroup.DELETE("/assets/:id", assetHandler.Delete)
 		authGroup.GET("/assets/:id/download", assetHandler.Download)
 		authGroup.GET("/assets/:id/thumbnail", assetHandler.Thumbnail)
+
+		// Avatar management routes.
+		authGroup.GET("/avatars", avatarHandler.List)
+		authGroup.POST("/avatars", avatarHandler.Create)
+		authGroup.GET("/avatars/:id", avatarHandler.Get)
+		authGroup.PUT("/avatars/:id", avatarHandler.Update)
+		authGroup.DELETE("/avatars/:id", avatarHandler.Delete)
+		authGroup.POST("/avatars/:id/bind-bot", avatarHandler.BindBot)
+		authGroup.POST("/avatars/:id/bind-asset", avatarHandler.BindAsset)
+		authGroup.DELETE("/avatars/:id/assets/:assetId", avatarHandler.UnbindAsset)
+		authGroup.PUT("/avatars/:id/action-mapping", avatarHandler.UpdateActionMapping)
 	}
 
 	// Admin-only API v1 route group.
