@@ -1,0 +1,54 @@
+server:
+  mode: "debug"            # debug | release | test
+  port: 8080
+  read_timeout: 10         # seconds
+  write_timeout: 30        # seconds
+
+database:
+  host: "localhost"
+  port: 5432
+  user: "ubothub"
+  password: "ubothub_dev"
+  dbname: "ubothub"
+  sslmode: "disable"
+  max_idle_conns: 10
+  max_open_conns: 100
+  conn_max_lifetime: 3600  # seconds
+
+redis:
+  addr: "localhost:6379"
+  password: "ubothub_dev"
+  db: 0
+  pool_size: 100
+
+storage:
+  provider: "minio"        # minio | aliyun_oss
+  minio:
+    endpoint: "localhost:9000"
+    access_key: "minioadmin"
+    secret_key: "minioadmin123"
+    use_ssl: false
+    bucket: "ubothub-assets"
+  aliyun_oss:
+    endpoint: ""
+    access_key_id: ""
+    access_key_secret: ""
+    bucket: ""
+    cdn_domain: ""
+
+jwt:
+  secret: "ubothub-dev-secret-key-change-in-production-min-256bit"
+  access_token_expire: 15    # minutes
+  refresh_token_expire: 10080 # minutes (7 days)
+  issuer: "ubothub"
+
+queue:
+  redis_addr: "localhost:6379"
+  redis_password: "ubothub_dev"
+  concurrency: 10
+
+log:
+  level: "debug"             # debug | info | warn | error
+  format: "console"          # console | json
+  output: "stdout"           # stdout | file
+  file_path: "logs/app.log"
