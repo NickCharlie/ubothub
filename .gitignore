@@ -1,0 +1,48 @@
+# Binaries
+backend/bin/
+*.exe
+
+# Dependencies
+node_modules/
+vendor/
+
+# Build output
+frontend/dist/
+frontend/.vite/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Logs
+logs/
+*.log
+
+# Docker volumes (local)
+data/
+
+# Go
+backend/wire_gen.go
+backend/docs/swagger.json
+backend/docs/swagger.yaml
+backend/docs/docs.go
+
+# Coverage
+coverage/
+*.out
+
+# Temporary
+tmp/
+.air.toml
