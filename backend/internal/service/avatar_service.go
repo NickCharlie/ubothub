@@ -7,6 +7,7 @@ import (
 	"github.com/rs/xid"
 	"github.com/NickCharlie/ubothub/backend/internal/model"
 	"github.com/NickCharlie/ubothub/backend/internal/repository"
+	"github.com/NickCharlie/ubothub/backend/pkg/sanitize"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
@@ -39,11 +40,11 @@ func (s *AvatarService) CreateAvatar(ctx context.Context, userID, name, descript
 	avatar := &model.AvatarConfig{
 		ID:            xid.New().String(),
 		UserID:        userID,
-		Name:          name,
-		Description:   description,
+		Name:          sanitize.Text(name),
+		Description:   sanitize.Text(description),
 		RenderType:    renderType,
-		SceneConfig:   sceneConfig,
-		ActionMapping: actionMapping,
+		SceneConfig:   sanitize.JSON(sceneConfig),
+		ActionMapping: sanitize.JSON(actionMapping),
 	}
 
 	if err := s.avatarRepo.Create(ctx, avatar); err != nil {
@@ -104,16 +105,16 @@ func (s *AvatarService) UpdateAvatar(ctx context.Context, avatarID, userID, name
 	}
 
 	if name != "" {
-		avatar.Name = name
+		avatar.Name = sanitize.Text(name)
 	}
 	if description != "" {
-		avatar.Description = description
+		avatar.Description = sanitize.Text(description)
 	}
 	if sceneConfig != "" {
-		avatar.SceneConfig = sceneConfig
+		avatar.SceneConfig = sanitize.JSON(sceneConfig)
 	}
 	if actionMapping != "" {
-		avatar.ActionMapping = actionMapping
+		avatar.ActionMapping = sanitize.JSON(actionMapping)
 	}
 
 	if err := s.avatarRepo.Update(ctx, avatar); err != nil {
@@ -212,8 +213,8 @@ func (s *AvatarService) BindAsset(ctx context.Context, avatarID, userID, assetID
 		ID:        xid.New().String(),
 		AvatarID:  avatarID,
 		AssetID:   assetID,
-		Role:      role,
-		Config:    config,
+		Role:      sanitize.Text(role),
+		Config:    sanitize.JSON(config),
 		SortOrder: sortOrder,
 	}
 
@@ -264,7 +265,7 @@ func (s *AvatarService) UpdateActionMapping(ctx context.Context, avatarID, userI
 		return ErrAvatarNotFound
 	}
 
-	avatar.ActionMapping = actionMapping
+	avatar.ActionMapping = sanitize.JSON(actionMapping)
 	if err := s.avatarRepo.Update(ctx, avatar); err != nil {
 		return fmt.Errorf("update action mapping: %w", err)
 	}

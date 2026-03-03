@@ -11,6 +11,7 @@ import (
 	"github.com/NickCharlie/ubothub/backend/internal/model"
 	"github.com/NickCharlie/ubothub/backend/internal/repository"
 	"github.com/NickCharlie/ubothub/backend/internal/storage"
+	"github.com/NickCharlie/ubothub/backend/pkg/sanitize"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
@@ -139,8 +140,8 @@ func (s *AssetService) CompleteUpload(ctx context.Context, userID, fileKey, name
 	asset := &model.Asset{
 		ID:          xid.New().String(),
 		UserID:      userID,
-		Name:        name,
-		Description: description,
+		Name:        sanitize.Text(name),
+		Description: sanitize.Text(description),
 		Category:    category,
 		Format:      ext,
 		FileKey:     fileKey,
@@ -223,10 +224,10 @@ func (s *AssetService) UpdateAsset(ctx context.Context, assetID, userID, name, d
 	}
 
 	if name != "" {
-		asset.Name = name
+		asset.Name = sanitize.Text(name)
 	}
 	if description != "" {
-		asset.Description = description
+		asset.Description = sanitize.Text(description)
 	}
 	if isPublic != nil {
 		asset.IsPublic = *isPublic

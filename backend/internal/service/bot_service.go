@@ -9,6 +9,7 @@ import (
 	"github.com/rs/xid"
 	"github.com/NickCharlie/ubothub/backend/internal/model"
 	"github.com/NickCharlie/ubothub/backend/internal/repository"
+	"github.com/NickCharlie/ubothub/backend/pkg/sanitize"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
@@ -51,13 +52,13 @@ func (s *BotService) CreateBot(ctx context.Context, userID, name, description, f
 	bot := &model.Bot{
 		ID:          xid.New().String(),
 		UserID:      userID,
-		Name:        name,
-		Description: description,
+		Name:        sanitize.Text(name),
+		Description: sanitize.Text(description),
 		Framework:   framework,
 		Status:      "offline",
 		AccessToken: accessToken,
 		WebhookURL:  webhookURL,
-		Config:      config,
+		Config:      sanitize.JSON(config),
 	}
 
 	if err := s.botRepo.Create(ctx, bot); err != nil {
@@ -116,16 +117,16 @@ func (s *BotService) UpdateBot(ctx context.Context, botID, userID, name, descrip
 	}
 
 	if name != "" {
-		bot.Name = name
+		bot.Name = sanitize.Text(name)
 	}
 	if description != "" {
-		bot.Description = description
+		bot.Description = sanitize.Text(description)
 	}
 	if webhookURL != "" {
 		bot.WebhookURL = webhookURL
 	}
 	if config != "" {
-		bot.Config = config
+		bot.Config = sanitize.JSON(config)
 	}
 
 	if err := s.botRepo.Update(ctx, bot); err != nil {
