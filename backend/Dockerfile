@@ -1,7 +1,11 @@
 # ---------- Stage 1: Build ----------
 FROM golang:1.25-alpine AS builder
 
+# Use Chinese mirrors for Alpine APK and Go modules.
+RUN sed -i 's|dl-cdn.alpinelinux.org|mirrors.aliyun.com|g' /etc/apk/repositories
 RUN apk add --no-cache git ca-certificates tzdata
+
+ENV GOPROXY=https://goproxy.cn,direct
 
 WORKDIR /app
 
@@ -15,6 +19,7 @@ RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /app/bin/server ./cmd/
 # ---------- Stage 2: Runtime ----------
 FROM alpine:3.21
 
+RUN sed -i 's|dl-cdn.alpinelinux.org|mirrors.aliyun.com|g' /etc/apk/repositories
 RUN apk add --no-cache ca-certificates tzdata curl
 
 WORKDIR /app

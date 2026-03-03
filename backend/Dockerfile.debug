@@ -1,7 +1,11 @@
 # Debug Dockerfile with hot-reload (air) and delve debugger support.
 FROM golang:1.25-alpine
 
+# Use Chinese mirrors for Alpine APK and Go modules.
+RUN sed -i 's|dl-cdn.alpinelinux.org|mirrors.aliyun.com|g' /etc/apk/repositories
 RUN apk add --no-cache git ca-certificates tzdata curl
+
+ENV GOPROXY=https://goproxy.cn,direct
 
 # Install air for hot-reload and delve for remote debugging.
 RUN go install github.com/air-verse/air@latest && \
