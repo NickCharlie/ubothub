@@ -36,6 +36,7 @@ var (
 	ErrUserExists         = &ErrCode{Code: 11005, Message: "user already exists", Status: http.StatusConflict}
 	ErrAccountLocked      = &ErrCode{Code: 11006, Message: "account temporarily locked", Status: http.StatusTooManyRequests}
 	ErrWeakPassword       = &ErrCode{Code: 11007, Message: "password does not meet strength requirements", Status: http.StatusBadRequest}
+	ErrAgreementRequired  = &ErrCode{Code: 11008, Message: "you must accept the terms of service and privacy policy", Status: http.StatusBadRequest}
 )
 
 // Bot error codes (12000-12999).
@@ -58,4 +59,9 @@ var (
 var (
 	ErrAvatarNotFound    = &ErrCode{Code: 14001, Message: "avatar not found", Status: http.StatusNotFound}
 	ErrAvatarBotConflict = &ErrCode{Code: 14002, Message: "bot already bound to another avatar", Status: http.StatusConflict}
+)
+
+// Content moderation error codes (15000-15999).
+var (
+	ErrContentViolation = &ErrCode{Code: 15001, Message: "content violates platform policies", Status: http.StatusForbidden}
 )

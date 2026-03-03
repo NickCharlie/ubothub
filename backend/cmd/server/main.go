@@ -12,7 +12,9 @@ import (
 
 	"github.com/NickCharlie/ubothub/backend/internal/config"
 	"github.com/NickCharlie/ubothub/backend/internal/model"
+	"github.com/NickCharlie/ubothub/backend/internal/repository"
 	"github.com/NickCharlie/ubothub/backend/internal/router"
+	"github.com/NickCharlie/ubothub/backend/internal/service"
 	"github.com/NickCharlie/ubothub/backend/internal/storage"
 	"github.com/NickCharlie/ubothub/backend/pkg/logger"
 
@@ -64,6 +66,14 @@ func main() {
 		dbLog.Fatal("failed to auto-migrate", zap.Error(err))
 	}
 	dbLog.Info("database migration completed")
+
+	// Seed default legal agreements.
+	legalLog := logger.Named(rootLogger, "legal")
+	legalRepo := repository.NewLegalRepository(db)
+	legalSvc := service.NewLegalService(legalRepo, legalLog)
+	if err := legalSvc.SeedDefaultAgreements(context.Background()); err != nil {
+		legalLog.Warn("failed to seed default agreements", zap.Error(err))
+	}
 
 	// Initialize Redis.
 	redisLog := logger.Named(rootLogger, "redis")
@@ -152,6 +162,8 @@ func autoMigrate(db *gorm.DB) error {
 		&model.AvatarAsset{},
 		&model.MessageLog{},
 		&model.ActionTemplate{},
+		&model.LegalAgreement{},
+		&model.UserAgreementAcceptance{},
 	)
 }
 

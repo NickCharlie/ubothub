@@ -10,6 +10,7 @@ import (
 	"github.com/NickCharlie/ubothub/backend/internal/event"
 	"github.com/NickCharlie/ubothub/backend/internal/handler"
 	"github.com/NickCharlie/ubothub/backend/internal/middleware"
+	"github.com/NickCharlie/ubothub/backend/internal/moderation"
 	"github.com/NickCharlie/ubothub/backend/internal/repository"
 	"github.com/NickCharlie/ubothub/backend/internal/service"
 	"github.com/NickCharlie/ubothub/backend/internal/storage"
@@ -71,6 +72,16 @@ func Setup(db *gorm.DB, rdb *redis.Client, store storage.ObjectStorage, cfg *con
 	botRepo := repository.NewBotRepository(db)
 	assetRepo := repository.NewAssetRepository(db)
 	avatarRepo := repository.NewAvatarRepository(db)
+	legalRepo := repository.NewLegalRepository(db)
+
+	// Initialize content moderation service.
+	moderationLog := logger.Named(rootLogger, "moderation")
+	moderator := moderation.NewAliyunService(moderation.AliyunConfig{
+		Enabled:         cfg.Moderation.Enabled,
+		AccessKeyID:     cfg.Moderation.AccessKeyID,
+		AccessKeySecret: cfg.Moderation.AccessKeySecret,
+		Endpoint:        cfg.Moderation.Endpoint,
+	}, moderationLog)
 
 	// Initialize services.
 	authLog := logger.Named(rootLogger, "auth")
@@ -83,15 +94,18 @@ func Setup(db *gorm.DB, rdb *redis.Client, store storage.ObjectStorage, cfg *con
 	assetSvc := service.NewAssetService(assetRepo, store, bucket, assetLog)
 	avatarLog := logger.Named(rootLogger, "avatar")
 	avatarSvc := service.NewAvatarService(avatarRepo, botRepo, avatarLog)
+	legalLog := logger.Named(rootLogger, "legal")
+	legalSvc := service.NewLegalService(legalRepo, legalLog)
 
 	// Initialize handlers.
-	authHandler := handler.NewAuthHandler(authSvc)
+	authHandler := handler.NewAuthHandler(authSvc, legalSvc)
 	userHandler := handler.NewUserHandler(userSvc)
 	botHandler := handler.NewBotHandler(botSvc)
 	assetHandler := handler.NewAssetHandler(assetSvc)
 	avatarHandler := handler.NewAvatarHandler(avatarSvc)
+	legalHandler := handler.NewLegalHandler(legalSvc)
 	gatewayLog := logger.Named(rootLogger, "gateway")
-	gatewayHandler := handler.NewGatewayHandler(botSvc, adapterFactory, eventBus, gatewayLog)
+	gatewayHandler := handler.NewGatewayHandler(botSvc, adapterFactory, eventBus, moderator, gatewayLog)
 
 	// Public auth routes with stricter rate limiting.
 	authRoutes := r.Group("/api/v1/auth")
@@ -109,6 +123,16 @@ func Setup(db *gorm.DB, rdb *redis.Client, store storage.ObjectStorage, cfg *con
 
 	// Public asset browsing (no auth required).
 	r.GET("/api/v1/assets/public", assetHandler.ListPublic)
+
+	// Public legal agreement routes (no auth required).
+	r.GET("/api/v1/legal/terms", legalHandler.GetTermsOfService)
+	r.GET("/api/v1/legal/privacy", legalHandler.GetPrivacyPolicy)
+	r.GET("/api/v1/legal/agreements", legalHandler.GetAllAgreements)
+
+	// Public bot plaza and avatar preview for guest users (view only, no chat).
+	r.GET("/api/v1/plaza/bots", botHandler.ListPublic)
+	r.GET("/api/v1/plaza/bots/:id", botHandler.GetPublic)
+	r.GET("/api/v1/plaza/avatars/:id", avatarHandler.GetPublic)
 
 	// Bot gateway routes (authenticated by bot access token, not JWT).
 	gatewayRoutes := r.Group("/api/v1/gateway")

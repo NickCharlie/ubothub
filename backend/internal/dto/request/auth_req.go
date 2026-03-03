@@ -2,9 +2,11 @@ package request
 
 // RegisterRequest represents the user registration request payload.
 type RegisterRequest struct {
-	Email    string `json:"email" binding:"required,email,max=255"`
-	Username string `json:"username" binding:"required,min=3,max=64,alphanum"`
-	Password string `json:"password" binding:"required,min=8,max=128"`
+	Email         string `json:"email" binding:"required,email,max=255"`
+	Username      string `json:"username" binding:"required,min=3,max=64,alphanum"`
+	Password      string `json:"password" binding:"required,min=8,max=128"`
+	AcceptTerms   bool   `json:"accept_terms" binding:"required"`
+	AcceptPrivacy bool   `json:"accept_privacy" binding:"required"`
 }
 
 // LoginRequest represents the user login request payload.
