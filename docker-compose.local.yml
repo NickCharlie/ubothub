@@ -1,0 +1,111 @@
+# Docker Compose for LOCAL TESTING — full-stack with production-style builds.
+# All credentials are hardcoded dev values — no .env file needed.
+#
+# Usage:
+#   make docker-local-up      # build & start everything
+#   make docker-local-logs    # tail all logs
+#   make docker-local-down    # stop everything
+#
+# Access:
+#   Frontend:  http://localhost
+#   Swagger:   http://localhost/swagger/index.html
+#   MinIO UI:  http://localhost:19001  (minioadmin / minioadmin123)
+#   Postgres:  localhost:15432  (ubothub / ubothub_dev)
+#   Redis:     localhost:16379  (password: ubothub_dev)
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: ubothub-local-postgres
+    ports:
+      - "15432:5432"
+    environment:
+      POSTGRES_USER: ubothub
+      POSTGRES_PASSWORD: ubothub_dev
+      POSTGRES_DB: ubothub
+    volumes:
+      - local_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ubothub"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - ubothub-local
+
+  redis:
+    image: redis:7-alpine
+    container_name: ubothub-local-redis
+    ports:
+      - "16379:6379"
+    command: redis-server --requirepass ubothub_dev --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - local_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "ubothub_dev", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - ubothub-local
+
+  minio:
+    image: minio/minio:latest
+    container_name: ubothub-local-minio
+    ports:
+      - "19000:9000"
+      - "19001:9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin123
+    volumes:
+      - local_minio_data:/data
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - ubothub-local
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: ubothub-local-backend
+    restart: unless-stopped
+    command: ["/app/server", "-mode", "all"]
+    volumes:
+      - ./backend/configs/config.docker.yaml:/app/configs/config.yaml:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    networks:
+      - ubothub-local
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: ubothub-local-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - ubothub-local
+
+volumes:
+  local_postgres_data:
+  local_redis_data:
+  local_minio_data:
+
+networks:
+  ubothub-local:
+    driver: bridge

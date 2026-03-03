@@ -1,4 +1,4 @@
-.PHONY: dev dev-backend dev-frontend docker-up docker-down docker-debug-up docker-debug-down docker-prod-up docker-prod-down build test lint swagger wire clean
+.PHONY: dev dev-backend dev-frontend docker-up docker-down docker-debug-up docker-debug-down docker-local-up docker-local-down docker-prod-up docker-prod-down build test lint swagger wire clean
 
 # Development (native — infrastructure in Docker, app runs locally)
 dev: docker-up dev-backend dev-frontend
@@ -31,6 +31,19 @@ docker-debug-logs:
 
 docker-debug-clean:
 	docker-compose -f docker-compose.debug.yml down -v
+
+# Docker — local test environment (production-style builds, all-in-one)
+docker-local-up:
+	docker compose -f docker-compose.local.yml up -d --build
+
+docker-local-down:
+	docker compose -f docker-compose.local.yml down
+
+docker-local-logs:
+	docker compose -f docker-compose.local.yml logs -f
+
+docker-local-clean:
+	docker compose -f docker-compose.local.yml down -v
 
 # Docker — production environment (optimized builds, nginx, separated API/worker)
 docker-prod-up:

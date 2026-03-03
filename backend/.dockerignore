@@ -3,9 +3,6 @@
 .claude
 bin/
 tmp/
-docs/swagger.json
-docs/swagger.yaml
-docs/docs.go
 vendor/
 *.md
 *.log

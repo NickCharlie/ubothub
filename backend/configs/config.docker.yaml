@@ -1,12 +1,13 @@
 server:
-  mode: "release"
+  mode: "debug"
   port: 8080
   read_timeout: 10
   write_timeout: 30
   allowed_origins:
-    - "https://ubothub.com"
-    - "https://www.ubothub.com"
-  frontend_url: "https://ubothub.com"
+    - "http://localhost"
+    - "http://localhost:80"
+    - "http://127.0.0.1"
+  frontend_url: "http://localhost"
 
 database:
   host: "postgres"
@@ -52,8 +53,8 @@ queue:
   concurrency: 10
 
 log:
-  level: "info"
-  format: "json"
+  level: "debug"
+  format: "console"
   output: "stdout"
   file_path: ""
 
