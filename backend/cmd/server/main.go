@@ -12,10 +12,13 @@ import (
 
 	"github.com/NickCharlie/ubothub/backend/internal/config"
 	"github.com/NickCharlie/ubothub/backend/internal/model"
+	"github.com/NickCharlie/ubothub/backend/internal/queue"
+	"github.com/NickCharlie/ubothub/backend/internal/queue/tasks"
 	"github.com/NickCharlie/ubothub/backend/internal/repository"
 	"github.com/NickCharlie/ubothub/backend/internal/router"
 	"github.com/NickCharlie/ubothub/backend/internal/service"
 	"github.com/NickCharlie/ubothub/backend/internal/storage"
+	"github.com/NickCharlie/ubothub/backend/pkg/email"
 	"github.com/NickCharlie/ubothub/backend/pkg/logger"
 
 	"github.com/gin-gonic/gin"
@@ -91,26 +94,65 @@ func main() {
 	}
 	storageLog.Info("object storage initialized", zap.String("provider", cfg.Storage.Provider))
 
-	// Set Gin mode.
-	gin.SetMode(cfg.Server.Mode)
+	// Initialize async task queue client.
+	queueLog := logger.Named(rootLogger, "queue")
+	queueClient := queue.NewClient(cfg.Queue.RedisAddr, cfg.Queue.RedisPassword, queueLog)
+	defer queueClient.Close()
 
-	// Create router with dependencies.
-	r := router.Setup(db, rdb, store, cfg, rootLogger)
+	// Start async worker if mode is "worker" or "all".
+	var queueServer *queue.Server
+	if *mode == "worker" || *mode == "all" {
+		queueServer = queue.NewServer(
+			cfg.Queue.RedisAddr,
+			cfg.Queue.RedisPassword,
+			cfg.Queue.Concurrency,
+			queueLog,
+		)
 
-	// Start HTTP server.
-	srv := &http.Server{
-		Addr:         fmt.Sprintf(":%d", cfg.Server.Port),
-		Handler:      r,
-		ReadTimeout:  time.Duration(cfg.Server.ReadTimeout) * time.Second,
-		WriteTimeout: time.Duration(cfg.Server.WriteTimeout) * time.Second,
+		// Register task handlers.
+		emailSender := email.NewSender(email.Config{
+			SMTPHost:    cfg.Email.SMTPHost,
+			SMTPPort:    cfg.Email.SMTPPort,
+			FromAddress: cfg.Email.FromAddress,
+			FromName:    cfg.Email.FromName,
+			Password:    cfg.Email.Password,
+			UseTLS:      cfg.Email.UseTLS,
+		})
+		emailHandler := queue.NewEmailHandler(emailSender, logger.Named(rootLogger, "queue.email"))
+		queueServer.Register(tasks.TypeEmailSend, emailHandler)
+
+		msgLogRepo := repository.NewMessageLogRepository(db)
+		msgLogHandler := queue.NewMessageLogHandler(msgLogRepo, logger.Named(rootLogger, "queue.message_log"))
+		queueServer.Register(tasks.TypeMessageLog, msgLogHandler)
+
+		go func() {
+			if err := queueServer.Start(); err != nil {
+				queueLog.Fatal("failed to start async worker", zap.Error(err))
+			}
+		}()
 	}
 
-	go func() {
-		serverLog.Info("HTTP server listening", zap.Int("port", cfg.Server.Port))
-		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			serverLog.Fatal("server error", zap.Error(err))
+	// Start HTTP server if mode is "api" or "all".
+	var srv *http.Server
+	if *mode == "api" || *mode == "all" {
+		gin.SetMode(cfg.Server.Mode)
+
+		r := router.Setup(db, rdb, store, cfg, rootLogger)
+
+		srv = &http.Server{
+			Addr:         fmt.Sprintf(":%d", cfg.Server.Port),
+			Handler:      r,
+			ReadTimeout:  time.Duration(cfg.Server.ReadTimeout) * time.Second,
+			WriteTimeout: time.Duration(cfg.Server.WriteTimeout) * time.Second,
 		}
-	}()
+
+		go func() {
+			serverLog.Info("HTTP server listening", zap.Int("port", cfg.Server.Port))
+			if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+				serverLog.Fatal("server error", zap.Error(err))
+			}
+		}()
+	}
 
 	// Graceful shutdown.
 	quit := make(chan os.Signal, 1)
@@ -121,8 +163,14 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	if err := srv.Shutdown(ctx); err != nil {
-		serverLog.Fatal("server forced to shutdown", zap.Error(err))
+	if srv != nil {
+		if err := srv.Shutdown(ctx); err != nil {
+			serverLog.Fatal("server forced to shutdown", zap.Error(err))
+		}
+	}
+
+	if queueServer != nil {
+		queueServer.Stop()
 	}
 
 	serverLog.Info("server exited gracefully")
