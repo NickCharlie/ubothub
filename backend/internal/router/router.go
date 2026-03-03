@@ -232,6 +232,11 @@ func Setup(ctx context.Context, db *gorm.DB, rdb *redis.Client, store storage.Ob
 	// Register event bus subscribers for real-time WebSocket delivery.
 	ws.RegisterEventSubscribers(wsHub, eventBus, wsLog)
 
+	// Wire chat forwarder to bridge WebSocket messages to bot adapters (e.g., AstrBot).
+	chatForwarderLog := logger.Named(rootLogger, "chat-forwarder")
+	chatForwarder := handler.NewChatForwarder(botSvc, adapterFactory, chatForwarderLog)
+	wsHub.SetMessageHandler(chatForwarder.HandleMessage)
+
 	// Start the WebSocket hub event loop (blocks until ctx is cancelled).
 	go wsHub.Run(ctx)
 

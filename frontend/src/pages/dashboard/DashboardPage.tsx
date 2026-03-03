@@ -8,7 +8,8 @@ import {
   ArrowUpRight,
   TrendingUp,
 } from "lucide-react";
-import { adminApi } from "@/api/bot";
+import { botApi, adminApi } from "@/api/bot";
+import { assetApi } from "@/api/asset";
 import { useAuthStore } from "@/stores/auth";
 
 interface StatCard {
@@ -29,39 +30,66 @@ export default function DashboardPage() {
         .dashboard()
         .then((res) => setStats(res.data.data))
         .catch(() => {});
+    } else if (user) {
+      // For regular users, fetch their own bot and asset counts.
+      Promise.all([
+        botApi.list(1, 1).catch(() => null),
+        assetApi.list(1, 1).catch(() => null),
+      ]).then(([botsRes, assetsRes]) => {
+        setStats({
+          total_bots: botsRes?.data?.data?.total ?? 0,
+          total_users: null,
+          total_assets: assetsRes?.data?.data?.total ?? 0,
+          messages_today: null,
+        });
+      });
     }
   }, [user]);
 
-  const cards: StatCard[] = [
-    {
-      title: "Total Bots",
-      value: stats?.total_bots ?? "--",
-      icon: <Bot size={20} />,
-      change: "+12%",
-      color: "from-blue-500 to-blue-600",
-    },
-    {
-      title: "Active Users",
-      value: stats?.total_users ?? "--",
-      icon: <Users size={20} />,
-      change: "+8%",
-      color: "from-emerald-500 to-emerald-600",
-    },
-    {
-      title: "Assets",
-      value: stats?.total_assets ?? "--",
-      icon: <Box size={20} />,
-      change: "+24%",
-      color: "from-purple-500 to-purple-600",
-    },
-    {
-      title: "Messages Today",
-      value: stats?.messages_today ?? "--",
-      icon: <Activity size={20} />,
-      change: "+5%",
-      color: "from-amber-500 to-orange-600",
-    },
-  ];
+  const isAdmin = user?.role === "admin";
+
+  const cards: StatCard[] = isAdmin
+    ? [
+        {
+          title: "Total Bots",
+          value: stats?.total_bots ?? "--",
+          icon: <Bot size={20} />,
+          change: stats ? `${stats.total_bots ?? 0}` : undefined,
+          color: "from-blue-500 to-blue-600",
+        },
+        {
+          title: "Active Users",
+          value: stats?.total_users ?? "--",
+          icon: <Users size={20} />,
+          color: "from-emerald-500 to-emerald-600",
+        },
+        {
+          title: "Assets",
+          value: stats?.total_assets ?? "--",
+          icon: <Box size={20} />,
+          color: "from-purple-500 to-purple-600",
+        },
+        {
+          title: "Messages Today",
+          value: stats?.messages_today ?? "--",
+          icon: <Activity size={20} />,
+          color: "from-amber-500 to-orange-600",
+        },
+      ]
+    : [
+        {
+          title: "My Bots",
+          value: stats?.total_bots ?? "--",
+          icon: <Bot size={20} />,
+          color: "from-blue-500 to-blue-600",
+        },
+        {
+          title: "My Assets",
+          value: stats?.total_assets ?? "--",
+          icon: <Box size={20} />,
+          color: "from-purple-500 to-purple-600",
+        },
+      ];
 
   const containerVariants = {
     hidden: {},

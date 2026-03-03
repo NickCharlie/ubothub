@@ -42,6 +42,11 @@ func (c *Client) RoomID() string {
 	return c.roomID
 }
 
+// Hub returns the hub this client belongs to.
+func (c *Client) Hub() *Hub {
+	return c.hub
+}
+
 // ReadPump pumps messages from the WebSocket connection to the hub.
 // Must be run as a goroutine per client.
 func (c *Client) ReadPump() {

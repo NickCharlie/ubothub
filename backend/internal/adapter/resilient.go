@@ -28,6 +28,11 @@ func NewResilientAdapter(inner BotAdapter, registry *circuitbreaker.Registry, re
 	}
 }
 
+// Inner returns the underlying unwrapped adapter.
+func (a *ResilientAdapter) Inner() BotAdapter {
+	return a.inner
+}
+
 func (a *ResilientAdapter) Framework() string {
 	return a.inner.Framework()
 }

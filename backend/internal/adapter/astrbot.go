@@ -10,7 +10,7 @@ import (
 )
 
 // AstrBotAdapter integrates with AstrBot via its HTTP API.
-// AstrBot API docs: POST /api/v1/chat, POST /api/v1/im/message
+// AstrBot HTTP API: POST /api/v1/message (chat), POST /api/v1/im/message (IM push)
 // Auth: X-API-Key header or Authorization: Bearer <api_key>
 type AstrBotAdapter struct {
 	client *http.Client
@@ -150,4 +150,78 @@ func (a *AstrBotAdapter) SendMessage(ctx context.Context, webhookURL string, msg
 	}
 
 	return nil
+}
+
+// AstrBotChatRequest represents the AstrBot /api/v1/message request body.
+type AstrBotChatRequest struct {
+	Message   interface{} `json:"message"`
+	Platform  string      `json:"platform"`
+	UserID    string      `json:"user_id"`
+	Nickname  string      `json:"nickname"`
+	SessionID string      `json:"session_id,omitempty"`
+	Timeout   int         `json:"timeout,omitempty"`
+}
+
+// AstrBotChatResponse represents the AstrBot /api/v1/message response.
+type AstrBotChatResponse struct {
+	Success   bool                     `json:"success"`
+	Response  []map[string]interface{} `json:"response"`
+	EventID   string                   `json:"event_id"`
+	SessionID string                   `json:"session_id"`
+	Timestamp float64                  `json:"timestamp"`
+	Error     string                   `json:"error,omitempty"`
+}
+
+// Chat sends a user message to AstrBot's HTTP chat API and returns the response.
+// This is the primary method for user→AstrBot→response flow.
+// baseURL: AstrBot API base URL (e.g., http://localhost:6185)
+// apiKey: AstrBot auth token
+// platform: platform identifier (e.g., "ubothub")
+func (a *AstrBotAdapter) Chat(ctx context.Context, baseURL, apiKey, platform, userID, nickname, message, sessionID string) (*AstrBotChatResponse, error) {
+	body := AstrBotChatRequest{
+		Message:   message,
+		Platform:  platform,
+		UserID:    userID,
+		Nickname:  nickname,
+		SessionID: sessionID,
+		Timeout:   30,
+	}
+
+	jsonBody, err := json.Marshal(body)
+	if err != nil {
+		return nil, fmt.Errorf("marshal chat request: %w", err)
+	}
+
+	endpoint := baseURL + "/api/v1/message"
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(jsonBody))
+	if err != nil {
+		return nil, fmt.Errorf("create request: %w", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	if apiKey != "" {
+		req.Header.Set("Authorization", "Bearer "+apiKey)
+	}
+
+	resp, err := a.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("chat with astrbot: %w", err)
+	}
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(io.LimitReader(resp.Body, 64*1024))
+	if err != nil {
+		return nil, fmt.Errorf("read response: %w", err)
+	}
+
+	if resp.StatusCode >= 400 {
+		return nil, fmt.Errorf("astrbot returned %d: %s", resp.StatusCode, string(respBody))
+	}
+
+	var chatResp AstrBotChatResponse
+	if err := json.Unmarshal(respBody, &chatResp); err != nil {
+		return nil, fmt.Errorf("parse response: %w", err)
+	}
+
+	return &chatResp, nil
 }

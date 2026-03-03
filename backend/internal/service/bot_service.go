@@ -92,6 +92,19 @@ func (s *BotService) CreateBot(ctx context.Context, userID, name, description, f
 	return bot, accessToken, nil
 }
 
+// GetBotByID returns a bot by ID without ownership verification.
+// Used internally by the chat forwarder for message routing.
+func (s *BotService) GetBotByID(ctx context.Context, botID string) (*model.Bot, error) {
+	bot, err := s.botRepo.FindByID(ctx, botID)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, ErrBotNotFound
+		}
+		return nil, fmt.Errorf("find bot: %w", err)
+	}
+	return bot, nil
+}
+
 // GetBot returns a bot by ID, verifying ownership.
 func (s *BotService) GetBot(ctx context.Context, botID, userID string) (*model.Bot, error) {
 	bot, err := s.botRepo.FindByID(ctx, botID)

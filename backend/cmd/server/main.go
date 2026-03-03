@@ -119,6 +119,17 @@ func main() {
 	}
 	storageLog.Info("object storage initialized", zap.String("provider", cfg.Storage.Provider))
 
+	// Ensure the storage bucket exists (auto-create for MinIO, verify for OSS).
+	storageBucket := cfg.Storage.MinIO.Bucket
+	if cfg.Storage.Provider == "aliyun_oss" {
+		storageBucket = cfg.Storage.AliyunOSS.Bucket
+	}
+	if err := store.EnsureBucket(context.Background(), storageBucket); err != nil {
+		storageLog.Warn("failed to ensure storage bucket", zap.String("bucket", storageBucket), zap.Error(err))
+	} else {
+		storageLog.Info("storage bucket ready", zap.String("bucket", storageBucket))
+	}
+
 	// Initialize async task queue client.
 	queueLog := logger.Named(rootLogger, "queue")
 	queueClient := queue.NewClient(cfg.Queue.RedisAddr, cfg.Queue.RedisPassword, queueLog)

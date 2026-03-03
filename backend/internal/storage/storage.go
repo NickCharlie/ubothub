@@ -17,6 +17,9 @@ type ObjectInfo struct {
 // ObjectStorage defines the interface for object storage operations.
 // Implementations must be safe for concurrent use.
 type ObjectStorage interface {
+	// EnsureBucket creates the bucket if it does not exist.
+	EnsureBucket(ctx context.Context, bucket string) error
+
 	// PutObject uploads a file to the specified bucket and key.
 	PutObject(ctx context.Context, bucket, key string, reader io.Reader, size int64, contentType string) error
 

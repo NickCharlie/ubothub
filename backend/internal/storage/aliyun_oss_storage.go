@@ -39,6 +39,19 @@ func (s *AliyunOSSStorage) getBucket(bucket string) (*oss.Bucket, error) {
 	return s.client.Bucket(bucket)
 }
 
+// EnsureBucket verifies the bucket exists. For Aliyun OSS, buckets must be
+// pre-created via the console; this is a connectivity check only.
+func (s *AliyunOSSStorage) EnsureBucket(ctx context.Context, bucket string) error {
+	ok, err := s.client.IsBucketExist(bucket)
+	if err != nil {
+		return fmt.Errorf("check bucket %s: %w", bucket, err)
+	}
+	if !ok {
+		return fmt.Errorf("bucket %s does not exist; create it in the Aliyun console", bucket)
+	}
+	return nil
+}
+
 func (s *AliyunOSSStorage) PutObject(ctx context.Context, bucket, key string, reader io.Reader, size int64, contentType string) error {
 	b, err := s.getBucket(bucket)
 	if err != nil {

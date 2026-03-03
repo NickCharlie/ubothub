@@ -4,7 +4,7 @@ package request
 type CreateAvatarRequest struct {
 	Name          string `json:"name" binding:"required,min=1,max=128"`
 	Description   string `json:"description" binding:"omitempty,max=2048"`
-	RenderType    string `json:"render_type" binding:"required,oneof=three_d live2d"`
+	RenderType    string `json:"render_type" binding:"required,oneof=3d three_d live2d sprite"`
 	SceneConfig   string `json:"scene_config" binding:"omitempty"`
 	ActionMapping string `json:"action_mapping" binding:"omitempty"`
 }
