@@ -13,6 +13,7 @@ import (
 	"github.com/ubothub/backend/internal/config"
 	"github.com/ubothub/backend/internal/model"
 	"github.com/ubothub/backend/internal/router"
+	"github.com/ubothub/backend/internal/storage"
 	"github.com/ubothub/backend/pkg/logger"
 
 	"github.com/gin-gonic/gin"
@@ -53,7 +54,10 @@ func main() {
 	if err != nil {
 		dbLog.Fatal("failed to connect database", zap.Error(err))
 	}
-	dbLog.Info("database connected")
+	dbLog.Info("database connected",
+		zap.String("host", cfg.Database.Host),
+		zap.Bool("cloud", cfg.Database.DSNDirect != ""),
+	)
 
 	// Auto-migrate models.
 	if err := autoMigrate(db); err != nil {
@@ -69,11 +73,19 @@ func main() {
 	}
 	redisLog.Info("redis connected")
 
+	// Initialize object storage.
+	storageLog := logger.Named(rootLogger, "storage")
+	store, err := storage.NewFromConfig(cfg.Storage)
+	if err != nil {
+		storageLog.Fatal("failed to initialize storage", zap.Error(err))
+	}
+	storageLog.Info("object storage initialized", zap.String("provider", cfg.Storage.Provider))
+
 	// Set Gin mode.
 	gin.SetMode(cfg.Server.Mode)
 
 	// Create router with dependencies.
-	r := router.Setup(db, rdb, cfg, rootLogger)
+	r := router.Setup(db, rdb, store, cfg, rootLogger)
 
 	// Start HTTP server.
 	srv := &http.Server{
@@ -107,8 +119,11 @@ func main() {
 }
 
 // initDatabase establishes a PostgreSQL connection via GORM.
+// Supports both DSN-component mode and direct connection string for cloud databases.
 func initDatabase(cfg config.DatabaseConfig) (*gorm.DB, error) {
-	db, err := gorm.Open(postgres.Open(cfg.DSN()), &gorm.Config{
+	dsn := cfg.DSN()
+
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
 		Logger: gormlogger.Default.LogMode(gormlogger.Warn),
 	})
 	if err != nil {

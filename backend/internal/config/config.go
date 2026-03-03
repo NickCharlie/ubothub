@@ -27,7 +27,11 @@ type ServerConfig struct {
 }
 
 // DatabaseConfig holds PostgreSQL connection configuration.
+// Supports both component-based DSN (host/port/user/password) for local databases
+// and direct connection string (dsn_direct) for cloud databases (Alibaba Cloud RDS,
+// Neon, Supabase, etc.).
 type DatabaseConfig struct {
+	DSNDirect       string `mapstructure:"dsn_direct"`
 	Host            string `mapstructure:"host"`
 	Port            int    `mapstructure:"port"`
 	User            string `mapstructure:"user"`
@@ -40,10 +44,18 @@ type DatabaseConfig struct {
 }
 
 // DSN returns the PostgreSQL connection string.
+// If dsn_direct is set, it takes precedence (for cloud databases).
 func (c *DatabaseConfig) DSN() string {
+	if c.DSNDirect != "" {
+		return c.DSNDirect
+	}
+	sslMode := c.SSLMode
+	if sslMode == "" {
+		sslMode = "disable"
+	}
 	return fmt.Sprintf(
 		"host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
-		c.Host, c.Port, c.User, c.Password, c.DBName, c.SSLMode,
+		c.Host, c.Port, c.User, c.Password, c.DBName, sslMode,
 	)
 }
 

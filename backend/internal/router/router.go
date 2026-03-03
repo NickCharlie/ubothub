@@ -12,6 +12,7 @@ import (
 	"github.com/ubothub/backend/internal/middleware"
 	"github.com/ubothub/backend/internal/repository"
 	"github.com/ubothub/backend/internal/service"
+	"github.com/ubothub/backend/internal/storage"
 	"github.com/ubothub/backend/pkg/logger"
 	"github.com/ubothub/backend/pkg/token"
 	"go.uber.org/zap"
@@ -19,7 +20,7 @@ import (
 )
 
 // Setup creates and configures the Gin router with all routes and middleware.
-func Setup(db *gorm.DB, rdb *redis.Client, cfg *config.Config, rootLogger *zap.Logger) *gin.Engine {
+func Setup(db *gorm.DB, rdb *redis.Client, store storage.ObjectStorage, cfg *config.Config, rootLogger *zap.Logger) *gin.Engine {
 	r := gin.New()
 
 	mwLog := logger.Named(rootLogger, "middleware")
@@ -52,6 +53,12 @@ func Setup(db *gorm.DB, rdb *redis.Client, cfg *config.Config, rootLogger *zap.L
 		cfg.JWT.Issuer,
 	)
 
+	// Determine storage bucket.
+	bucket := cfg.Storage.MinIO.Bucket
+	if cfg.Storage.Provider == "aliyun_oss" {
+		bucket = cfg.Storage.AliyunOSS.Bucket
+	}
+
 	// Initialize event bus.
 	eventLog := logger.Named(rootLogger, "event")
 	eventBus := event.NewBus(10, eventLog)
@@ -62,19 +69,23 @@ func Setup(db *gorm.DB, rdb *redis.Client, cfg *config.Config, rootLogger *zap.L
 	// Initialize repositories.
 	userRepo := repository.NewUserRepository(db)
 	botRepo := repository.NewBotRepository(db)
+	assetRepo := repository.NewAssetRepository(db)
 
 	// Initialize services.
 	authLog := logger.Named(rootLogger, "auth")
 	userLog := logger.Named(rootLogger, "handler")
 	botLog := logger.Named(rootLogger, "bot")
+	assetLog := logger.Named(rootLogger, "asset")
 	authSvc := service.NewAuthService(userRepo, tokenMgr, rdb, authLog)
 	userSvc := service.NewUserService(userRepo, userLog)
 	botSvc := service.NewBotService(botRepo, botLog)
+	assetSvc := service.NewAssetService(assetRepo, store, bucket, assetLog)
 
 	// Initialize handlers.
 	authHandler := handler.NewAuthHandler(authSvc)
 	userHandler := handler.NewUserHandler(userSvc)
 	botHandler := handler.NewBotHandler(botSvc)
+	assetHandler := handler.NewAssetHandler(assetSvc)
 	gatewayLog := logger.Named(rootLogger, "gateway")
 	gatewayHandler := handler.NewGatewayHandler(botSvc, adapterFactory, eventBus, gatewayLog)
 
@@ -91,6 +102,9 @@ func Setup(db *gorm.DB, rdb *redis.Client, cfg *config.Config, rootLogger *zap.L
 		authRoutes.POST("/refresh", authHandler.Refresh)
 		authRoutes.POST("/logout", authHandler.Logout)
 	}
+
+	// Public asset browsing (no auth required).
+	r.GET("/api/v1/assets/public", assetHandler.ListPublic)
 
 	// Bot gateway routes (authenticated by bot access token, not JWT).
 	gatewayRoutes := r.Group("/api/v1/gateway")
@@ -120,6 +134,16 @@ func Setup(db *gorm.DB, rdb *redis.Client, cfg *config.Config, rootLogger *zap.L
 		authGroup.PUT("/bots/:id", botHandler.Update)
 		authGroup.DELETE("/bots/:id", botHandler.Delete)
 		authGroup.POST("/bots/:id/regenerate-token", botHandler.RegenerateToken)
+
+		// Asset management routes.
+		authGroup.GET("/assets", assetHandler.List)
+		authGroup.POST("/assets/upload/presigned", assetHandler.PresignedUpload)
+		authGroup.POST("/assets/upload/complete", assetHandler.CompleteUpload)
+		authGroup.GET("/assets/:id", assetHandler.Get)
+		authGroup.PUT("/assets/:id", assetHandler.Update)
+		authGroup.DELETE("/assets/:id", assetHandler.Delete)
+		authGroup.GET("/assets/:id/download", assetHandler.Download)
+		authGroup.GET("/assets/:id/thumbnail", assetHandler.Thumbnail)
 	}
 
 	// Admin-only API v1 route group.
