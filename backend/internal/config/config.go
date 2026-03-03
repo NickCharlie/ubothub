@@ -4,18 +4,20 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/joho/godotenv"
 	"github.com/spf13/viper"
 )
 
 // Config holds all configuration for the application.
 type Config struct {
-	Server   ServerConfig   `mapstructure:"server"`
-	Database DatabaseConfig `mapstructure:"database"`
-	Redis    RedisConfig    `mapstructure:"redis"`
-	Storage  StorageConfig  `mapstructure:"storage"`
-	JWT      JWTConfig      `mapstructure:"jwt"`
-	Queue    QueueConfig    `mapstructure:"queue"`
-	Log      LogConfig      `mapstructure:"log"`
+	Server     ServerConfig     `mapstructure:"server"`
+	Database   DatabaseConfig   `mapstructure:"database"`
+	Redis      RedisConfig      `mapstructure:"redis"`
+	Storage    StorageConfig    `mapstructure:"storage"`
+	JWT        JWTConfig        `mapstructure:"jwt"`
+	Queue      QueueConfig      `mapstructure:"queue"`
+	Log        LogConfig        `mapstructure:"log"`
+	Moderation ModerationConfig `mapstructure:"moderation"`
 }
 
 // ServerConfig holds HTTP server configuration.
@@ -125,8 +127,23 @@ type LogConfig struct {
 	FilePath string `mapstructure:"file_path"`
 }
 
+// ModerationConfig holds content moderation configuration.
+type ModerationConfig struct {
+	Enabled         bool   `mapstructure:"enabled"`
+	AccessKeyID     string `mapstructure:"access_key_id"`
+	AccessKeySecret string `mapstructure:"access_key_secret"`
+	Endpoint        string `mapstructure:"endpoint"`
+}
+
 // Load reads configuration from file and environment variables.
+// It loads .env files first (if present), then reads the config file,
+// with environment variables taking highest precedence.
 func Load(configPath string) (*Config, error) {
+	// Load .env file if present (ignores error if file doesn't exist).
+	_ = godotenv.Load()
+	// Also try environment-specific .env files.
+	_ = godotenv.Load(".env.local")
+
 	v := viper.New()
 	v.SetConfigFile(configPath)
 	v.AutomaticEnv()

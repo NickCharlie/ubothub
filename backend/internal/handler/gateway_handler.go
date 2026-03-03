@@ -8,6 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/NickCharlie/ubothub/backend/internal/adapter"
 	"github.com/NickCharlie/ubothub/backend/internal/event"
+	"github.com/NickCharlie/ubothub/backend/internal/moderation"
 	"github.com/NickCharlie/ubothub/backend/internal/service"
 	"github.com/NickCharlie/ubothub/backend/pkg/errcode"
 	"github.com/NickCharlie/ubothub/backend/pkg/response"
@@ -19,6 +20,7 @@ type GatewayHandler struct {
 	botSvc         *service.BotService
 	adapterFactory *adapter.Factory
 	eventBus       *event.Bus
+	moderator      moderation.Service
 	logger         *zap.Logger
 }
 
@@ -27,12 +29,14 @@ func NewGatewayHandler(
 	botSvc *service.BotService,
 	adapterFactory *adapter.Factory,
 	eventBus *event.Bus,
+	moderator moderation.Service,
 	logger *zap.Logger,
 ) *GatewayHandler {
 	return &GatewayHandler{
 		botSvc:         botSvc,
 		adapterFactory: adapterFactory,
 		eventBus:       eventBus,
+		moderator:      moderator,
 		logger:         logger,
 	}
 }
@@ -77,6 +81,19 @@ func (h *GatewayHandler) Webhook(c *gin.Context) {
 		)
 		response.Error(c, errcode.ErrBadRequest)
 		return
+	}
+
+	// Content moderation check.
+	if msg.Content != "" {
+		result, err := h.moderator.CheckText(c.Request.Context(), msg.Content)
+		if err == nil && !result.Pass {
+			h.logger.Warn("webhook message blocked by content moderation",
+				zap.String("bot_id", bot.ID),
+				zap.Strings("labels", result.Labels),
+			)
+			response.Error(c, errcode.ErrContentViolation)
+			return
+		}
 	}
 
 	h.eventBus.Publish(c.Request.Context(), event.Event{
@@ -142,6 +159,19 @@ func (h *GatewayHandler) Message(c *gin.Context) {
 	if err != nil {
 		response.Error(c, errcode.ErrBadRequest)
 		return
+	}
+
+	// Content moderation check.
+	if msg.Content != "" {
+		result, err := h.moderator.CheckText(c.Request.Context(), msg.Content)
+		if err == nil && !result.Pass {
+			h.logger.Warn("message blocked by content moderation",
+				zap.String("bot_id", bot.ID),
+				zap.Strings("labels", result.Labels),
+			)
+			response.Error(c, errcode.ErrContentViolation)
+			return
+		}
 	}
 
 	h.eventBus.Publish(c.Request.Context(), event.Event{
