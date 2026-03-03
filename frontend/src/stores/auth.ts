@@ -6,7 +6,12 @@ interface AuthState {
   accessToken: string | null;
   refreshToken: string | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (
+    email: string,
+    password: string,
+    captchaId: string,
+    captchaAnswer: string,
+  ) => Promise<void>;
   logout: () => Promise<void>;
   fetchUser: () => Promise<void>;
   setTokens: (access: string, refresh: string) => void;
@@ -19,10 +24,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   refreshToken: sessionStorage.getItem("refresh_token"),
   loading: false,
 
-  login: async (email, password) => {
+  login: async (email, password, captchaId, captchaAnswer) => {
     set({ loading: true });
     try {
-      const res = await authApi.login({ email, password });
+      const res = await authApi.login({
+        email,
+        password,
+        captcha_id: captchaId,
+        captcha_answer: captchaAnswer,
+      });
       const data = res.data.data;
       sessionStorage.setItem("access_token", data.access_token);
       sessionStorage.setItem("refresh_token", data.refresh_token);

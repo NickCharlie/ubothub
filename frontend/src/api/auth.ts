@@ -3,8 +3,8 @@ import http from "./http";
 export interface LoginParams {
   email: string;
   password: string;
-  captcha_id?: string;
-  captcha_answer?: string;
+  captcha_id: string;
+  captcha_answer: string;
 }
 
 export interface RegisterParams {
@@ -13,6 +13,8 @@ export interface RegisterParams {
   password: string;
   captcha_id: string;
   captcha_answer: string;
+  accept_terms: boolean;
+  accept_privacy: boolean;
 }
 
 export interface AuthResponse {
@@ -34,13 +36,20 @@ export interface UserInfo {
 }
 
 export const authApi = {
-  login: (data: LoginParams) => http.post<{ data: AuthResponse }>("/auth/login", data),
+  login: (data: LoginParams) =>
+    http.post<{ data: AuthResponse }>("/auth/login", data),
   register: (data: RegisterParams) => http.post("/auth/register", data),
   logout: () => http.post("/auth/logout"),
   refresh: (refreshToken: string) =>
-    http.post<{ data: AuthResponse }>("/auth/refresh", { refresh_token: refreshToken }),
-  getCaptcha: () => http.get<{ data: { captcha_id: string; captcha_image: string } }>("/auth/captcha"),
-  forgotPassword: (email: string) => http.post("/auth/forgot-password", { email }),
+    http.post<{ data: AuthResponse }>("/auth/refresh", {
+      refresh_token: refreshToken,
+    }),
+  getCaptcha: () =>
+    http.get<{ data: { captcha_id: string; captcha_image: string } }>(
+      "/auth/captcha",
+    ),
+  forgotPassword: (email: string) =>
+    http.post("/auth/forgot-password", { email }),
   resetPassword: (token: string, password: string) =>
     http.post("/auth/reset-password", { token, password }),
   getMe: () => http.get<{ data: UserInfo }>("/users/me"),

@@ -64,6 +64,8 @@ export default function RegisterPage() {
         password: form.password,
         captcha_id: form.captcha_id,
         captcha_answer: form.captcha_answer,
+        accept_terms: true,
+        accept_privacy: true,
       });
       navigate("/auth/login");
     } catch (err: any) {
