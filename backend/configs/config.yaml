@@ -3,6 +3,12 @@ server:
   port: 8080
   read_timeout: 10         # seconds
   write_timeout: 30        # seconds
+  allowed_origins:         # CORS allowed origins (empty = allow all in debug mode)
+    - "http://localhost:5173"
+    - "http://localhost:3000"
+    - "https://ubothub.com"
+    - "https://www.ubothub.com"
+  frontend_url: "https://ubothub.com"  # frontend base URL for email links etc.
 
 database:
   host: "localhost"

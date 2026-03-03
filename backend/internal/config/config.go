@@ -22,10 +22,12 @@ type Config struct {
 
 // ServerConfig holds HTTP server configuration.
 type ServerConfig struct {
-	Mode         string `mapstructure:"mode"`
-	Port         int    `mapstructure:"port"`
-	ReadTimeout  int    `mapstructure:"read_timeout"`
-	WriteTimeout int    `mapstructure:"write_timeout"`
+	Mode           string   `mapstructure:"mode"`
+	Port           int      `mapstructure:"port"`
+	ReadTimeout    int      `mapstructure:"read_timeout"`
+	WriteTimeout   int      `mapstructure:"write_timeout"`
+	AllowedOrigins []string `mapstructure:"allowed_origins"`
+	FrontendURL    string   `mapstructure:"frontend_url"`
 }
 
 // DatabaseConfig holds PostgreSQL connection configuration.
