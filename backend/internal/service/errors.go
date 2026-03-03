@@ -9,4 +9,15 @@ var (
 	ErrAccountLocked      = errors.New("account temporarily locked")
 	ErrTokenInvalid       = errors.New("invalid token")
 	ErrTokenRevoked       = errors.New("token revoked")
+
+	ErrBotNotFound      = errors.New("bot not found")
+	ErrBotLimitExceeded = errors.New("bot count limit exceeded")
+
+	ErrAssetNotFound      = errors.New("asset not found")
+	ErrAssetFormatInvalid = errors.New("unsupported asset format")
+	ErrAssetSizeTooLarge  = errors.New("file size exceeds limit")
+	ErrAssetQuotaExceeded = errors.New("storage quota exceeded")
+
+	ErrAvatarNotFound    = errors.New("avatar not found")
+	ErrAvatarBotConflict = errors.New("bot already bound to another avatar")
 )

@@ -52,16 +52,20 @@ func Setup(db *gorm.DB, rdb *redis.Client, cfg *config.Config, rootLogger *zap.L
 
 	// Initialize repositories.
 	userRepo := repository.NewUserRepository(db)
+	botRepo := repository.NewBotRepository(db)
 
 	// Initialize services.
 	authLog := logger.Named(rootLogger, "auth")
 	userLog := logger.Named(rootLogger, "handler")
+	botLog := logger.Named(rootLogger, "bot")
 	authSvc := service.NewAuthService(userRepo, tokenMgr, rdb, authLog)
 	userSvc := service.NewUserService(userRepo, userLog)
+	botSvc := service.NewBotService(botRepo, botLog)
 
 	// Initialize handlers.
 	authHandler := handler.NewAuthHandler(authSvc)
 	userHandler := handler.NewUserHandler(userSvc)
+	botHandler := handler.NewBotHandler(botSvc)
 
 	// Public auth routes with stricter rate limiting.
 	authRoutes := r.Group("/api/v1/auth")
@@ -85,6 +89,14 @@ func Setup(db *gorm.DB, rdb *redis.Client, cfg *config.Config, rootLogger *zap.L
 		authGroup.GET("/users/me", userHandler.GetMe)
 		authGroup.PUT("/users/me", userHandler.UpdateMe)
 		authGroup.PUT("/users/me/password", userHandler.ChangePassword)
+
+		// Bot management routes.
+		authGroup.GET("/bots", botHandler.List)
+		authGroup.POST("/bots", botHandler.Create)
+		authGroup.GET("/bots/:id", botHandler.Get)
+		authGroup.PUT("/bots/:id", botHandler.Update)
+		authGroup.DELETE("/bots/:id", botHandler.Delete)
+		authGroup.POST("/bots/:id/regenerate-token", botHandler.RegenerateToken)
 	}
 
 	// Admin-only API v1 route group.
