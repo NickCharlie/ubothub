@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"net/http"
 	"sync"
+
+	"github.com/NickCharlie/ubothub/backend/pkg/circuitbreaker"
+	"github.com/NickCharlie/ubothub/backend/pkg/retry"
 )
 
 // Factory manages adapter registration and lookup.
@@ -14,12 +17,16 @@ type Factory struct {
 
 // NewFactory creates a new adapter factory with default adapters registered.
 // The shared HTTP client is used by all adapters for connection pooling.
+// Each adapter is wrapped with circuit breaker and retry for resilient outbound calls.
 func NewFactory(client *http.Client) *Factory {
+	cbRegistry := circuitbreaker.NewRegistry()
+	retryCfg := retry.DefaultConfig()
+
 	f := &Factory{
 		adapters: make(map[string]BotAdapter),
 	}
-	f.Register(NewAstrBotAdapter(client))
-	f.Register(NewWebhookAdapter(client))
+	f.Register(NewResilientAdapter(NewAstrBotAdapter(client), cbRegistry, retryCfg))
+	f.Register(NewResilientAdapter(NewWebhookAdapter(client), cbRegistry, retryCfg))
 	return f
 }
 
