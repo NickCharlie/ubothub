@@ -15,13 +15,14 @@ import (
 // For cookie-based flows, it uses the double-submit cookie pattern: the server sets
 // a random token in a cookie, and the client must send the same value in the
 // X-CSRF-Token header.
-func CSRF() gin.HandlerFunc {
+// The secure parameter controls whether the cookie requires HTTPS (set false for local HTTP dev).
+func CSRF(secure bool) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// Safe methods don't need CSRF protection.
 		if c.Request.Method == http.MethodGet ||
 			c.Request.Method == http.MethodHead ||
 			c.Request.Method == http.MethodOptions {
-			ensureCSRFCookie(c)
+			ensureCSRFCookie(c, secure)
 			c.Next()
 			return
 		}
@@ -56,11 +57,11 @@ func CSRF() gin.HandlerFunc {
 }
 
 // ensureCSRFCookie sets a CSRF cookie if one doesn't already exist.
-func ensureCSRFCookie(c *gin.Context) {
+func ensureCSRFCookie(c *gin.Context, secure bool) {
 	if _, err := c.Cookie("_csrf"); err != nil {
 		token := generateCSRFToken()
-		c.SetSameSite(http.SameSiteStrictMode)
-		c.SetCookie("_csrf", token, 86400, "/", "", true, false)
+		c.SetSameSite(http.SameSiteLaxMode)
+		c.SetCookie("_csrf", token, 86400, "/", "", secure, false)
 	}
 }
 

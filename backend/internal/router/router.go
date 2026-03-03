@@ -42,7 +42,7 @@ func Setup(ctx context.Context, db *gorm.DB, rdb *redis.Client, store storage.Ob
 	r.Use(middleware.Logger(mwLog))
 	r.Use(middleware.CORS(cfg.Server.Mode, cfg.Server.AllowedOrigins))
 	r.Use(middleware.SecurityHeaders())
-	r.Use(middleware.CSRF())
+	r.Use(middleware.CSRF(cfg.Server.Mode != "debug"))
 	r.Use(middleware.RateLimiter(rdb, middleware.RateLimiterConfig{
 		MaxRequests: 100,
 		Window:      time.Second,
@@ -229,7 +229,7 @@ func Setup(ctx context.Context, db *gorm.DB, rdb *redis.Client, store storage.Ob
 	// Public auth routes with stricter rate limiting.
 	authRoutes := r.Group("/api/v1/auth")
 	authRoutes.Use(middleware.RateLimiter(rdb, middleware.RateLimiterConfig{
-		MaxRequests: 10,
+		MaxRequests: 30,
 		Window:      time.Minute,
 		KeyPrefix:   "rl:auth",
 	}))
