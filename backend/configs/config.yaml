@@ -72,3 +72,11 @@ moderation:
   access_key_id: ""
   access_key_secret: ""
   endpoint: ""               # e.g., https://green-cip.cn-shanghai.aliyuncs.com
+
+websocket:
+  max_connections: 10000           # global max WebSocket connections (0 = unlimited)
+  max_connections_per_room: 500    # max clients per bot room (0 = unlimited)
+  max_connections_per_user: 5      # max connections per authenticated user (0 = unlimited)
+  read_buffer_size: 4096           # bytes
+  write_buffer_size: 4096          # bytes
+  max_message_size: 8192           # bytes, max inbound message size

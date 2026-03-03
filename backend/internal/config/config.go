@@ -19,6 +19,7 @@ type Config struct {
 	Log        LogConfig        `mapstructure:"log"`
 	Email      EmailConfig      `mapstructure:"email"`
 	Moderation ModerationConfig `mapstructure:"moderation"`
+	WebSocket  WebSocketConfig  `mapstructure:"websocket"`
 }
 
 // ServerConfig holds HTTP server configuration.
@@ -146,6 +147,16 @@ type EmailConfig struct {
 	FromName    string `mapstructure:"from_name"`
 	Password    string `mapstructure:"password"`
 	UseTLS      bool   `mapstructure:"use_tls"`
+}
+
+// WebSocketConfig holds WebSocket hub and connection configuration.
+type WebSocketConfig struct {
+	MaxConnections        int `mapstructure:"max_connections"`
+	MaxConnectionsPerRoom int `mapstructure:"max_connections_per_room"`
+	MaxConnectionsPerUser int `mapstructure:"max_connections_per_user"`
+	ReadBufferSize        int `mapstructure:"read_buffer_size"`
+	WriteBufferSize       int `mapstructure:"write_buffer_size"`
+	MaxMessageSize        int `mapstructure:"max_message_size"`
 }
 
 // Load reads configuration from file and environment variables.

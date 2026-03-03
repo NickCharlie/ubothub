@@ -134,10 +134,14 @@ func main() {
 
 	// Start HTTP server if mode is "api" or "all".
 	var srv *http.Server
+	// Create a cancellable context for the WebSocket hub lifecycle.
+	wsCtx, wsCancel := context.WithCancel(context.Background())
+	defer wsCancel()
+
 	if *mode == "api" || *mode == "all" {
 		gin.SetMode(cfg.Server.Mode)
 
-		r := router.Setup(db, rdb, store, cfg, rootLogger)
+		r := router.Setup(wsCtx, db, rdb, store, cfg, rootLogger)
 
 		srv = &http.Server{
 			Addr:         fmt.Sprintf(":%d", cfg.Server.Port),
@@ -162,6 +166,9 @@ func main() {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
+
+	// Signal the WebSocket hub to shut down gracefully.
+	wsCancel()
 
 	if srv != nil {
 		if err := srv.Shutdown(ctx); err != nil {

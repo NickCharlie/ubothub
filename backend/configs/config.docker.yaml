@@ -70,3 +70,11 @@ moderation:
   access_key_id: ""
   access_key_secret: ""
   endpoint: ""
+
+websocket:
+  max_connections: 10000
+  max_connections_per_room: 500
+  max_connections_per_user: 5
+  read_buffer_size: 4096
+  write_buffer_size: 4096
+  max_message_size: 8192

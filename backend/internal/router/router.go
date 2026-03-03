@@ -1,6 +1,7 @@
 package router
 
 import (
+	"context"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -16,6 +17,7 @@ import (
 	"github.com/NickCharlie/ubothub/backend/internal/repository"
 	"github.com/NickCharlie/ubothub/backend/internal/service"
 	"github.com/NickCharlie/ubothub/backend/internal/storage"
+	"github.com/NickCharlie/ubothub/backend/internal/ws"
 	"github.com/NickCharlie/ubothub/backend/pkg/email"
 	"github.com/NickCharlie/ubothub/backend/pkg/httpclient"
 	"github.com/NickCharlie/ubothub/backend/pkg/logger"
@@ -25,7 +27,9 @@ import (
 )
 
 // Setup creates and configures the Gin router with all routes and middleware.
-func Setup(db *gorm.DB, rdb *redis.Client, store storage.ObjectStorage, cfg *config.Config, rootLogger *zap.Logger) *gin.Engine {
+// The returned context cancel function should be called during shutdown to
+// gracefully close the WebSocket hub.
+func Setup(ctx context.Context, db *gorm.DB, rdb *redis.Client, store storage.ObjectStorage, cfg *config.Config, rootLogger *zap.Logger) *gin.Engine {
 	r := gin.New()
 
 	mwLog := logger.Named(rootLogger, "middleware")
@@ -147,6 +151,37 @@ func Setup(db *gorm.DB, rdb *redis.Client, store storage.ObjectStorage, cfg *con
 	paymentPvd := payment.NewNoopProvider()
 	walletHandler := handler.NewWalletHandler(walletSvc, billingSvc, paymentPvd)
 
+	// Initialize WebSocket hub with configurable limits.
+	wsCfg := ws.DefaultConfig()
+	if cfg.WebSocket.MaxConnections > 0 {
+		wsCfg.MaxConnections = cfg.WebSocket.MaxConnections
+	}
+	if cfg.WebSocket.MaxConnectionsPerRoom > 0 {
+		wsCfg.MaxConnectionsPerRoom = cfg.WebSocket.MaxConnectionsPerRoom
+	}
+	if cfg.WebSocket.MaxConnectionsPerUser > 0 {
+		wsCfg.MaxConnectionsPerUser = cfg.WebSocket.MaxConnectionsPerUser
+	}
+	if cfg.WebSocket.ReadBufferSize > 0 {
+		wsCfg.ReadBufferSize = cfg.WebSocket.ReadBufferSize
+	}
+	if cfg.WebSocket.WriteBufferSize > 0 {
+		wsCfg.WriteBufferSize = cfg.WebSocket.WriteBufferSize
+	}
+	if cfg.WebSocket.MaxMessageSize > 0 {
+		wsCfg.MaxMessageSize = int64(cfg.WebSocket.MaxMessageSize)
+	}
+	wsLog := logger.Named(rootLogger, "websocket")
+	wsHub := ws.NewHub(wsCfg, wsLog)
+
+	// Register event bus subscribers for real-time WebSocket delivery.
+	ws.RegisterEventSubscribers(wsHub, eventBus, wsLog)
+
+	// Start the WebSocket hub event loop (blocks until ctx is cancelled).
+	go wsHub.Run(ctx)
+
+	wsHandler := handler.NewWSHandler(wsHub, tokenMgr, cfg.Server.AllowedOrigins, wsLog)
+
 	// Public auth routes with stricter rate limiting.
 	authRoutes := r.Group("/api/v1/auth")
 	authRoutes.Use(middleware.RateLimiter(rdb, middleware.RateLimiterConfig{
@@ -189,6 +224,9 @@ func Setup(db *gorm.DB, rdb *redis.Client, store storage.ObjectStorage, cfg *con
 		gatewayRoutes.POST("/webhook/:token", gatewayHandler.Webhook)
 		gatewayRoutes.POST("/message", gatewayHandler.Message)
 	}
+
+	// WebSocket endpoint (JWT validated via query parameter, not middleware).
+	r.GET("/api/v1/ws", wsHandler.Connect)
 
 	// Authenticated API v1 route group.
 	authGroup := r.Group("/api/v1")
@@ -252,6 +290,7 @@ func Setup(db *gorm.DB, rdb *redis.Client, store storage.ObjectStorage, cfg *con
 		adminGroup.DELETE("/bots/:id", adminHandler.ForceDeleteBot)
 		adminGroup.GET("/assets", adminHandler.ListAssets)
 		adminGroup.GET("/logs", adminHandler.ListMessageLogs)
+		adminGroup.GET("/ws/metrics", wsHandler.Metrics)
 	}
 
 	return r
