@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/rs/xid"
 )
 
 // Claims defines the JWT claims structure used by the application.
@@ -39,6 +40,7 @@ func (m *Manager) GenerateAccessToken(userID, role string) (string, error) {
 		UserID: userID,
 		Role:   role,
 		RegisteredClaims: jwt.RegisteredClaims{
+			ID:        xid.New().String(),
 			Issuer:    m.issuer,
 			Subject:   userID,
 			IssuedAt:  jwt.NewNumericDate(now),
@@ -57,6 +59,7 @@ func (m *Manager) GenerateRefreshToken(userID, role string) (string, error) {
 		UserID: userID,
 		Role:   role,
 		RegisteredClaims: jwt.RegisteredClaims{
+			ID:        xid.New().String(),
 			Issuer:    m.issuer,
 			Subject:   userID,
 			IssuedAt:  jwt.NewNumericDate(now),
