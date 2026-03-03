@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/NickCharlie/ubothub/backend/internal/captcha"
 	"github.com/NickCharlie/ubothub/backend/internal/dto/request"
 	"github.com/NickCharlie/ubothub/backend/internal/model"
 	"github.com/NickCharlie/ubothub/backend/internal/service"
@@ -14,13 +15,28 @@ import (
 
 // AuthHandler handles authentication HTTP endpoints.
 type AuthHandler struct {
-	authSvc  *service.AuthService
-	legalSvc *service.LegalService
+	authSvc    *service.AuthService
+	legalSvc   *service.LegalService
+	captchaSvc *captcha.Service
 }
 
 // NewAuthHandler creates a new auth handler.
-func NewAuthHandler(authSvc *service.AuthService, legalSvc *service.LegalService) *AuthHandler {
-	return &AuthHandler{authSvc: authSvc, legalSvc: legalSvc}
+func NewAuthHandler(authSvc *service.AuthService, legalSvc *service.LegalService, captchaSvc *captcha.Service) *AuthHandler {
+	return &AuthHandler{authSvc: authSvc, legalSvc: legalSvc, captchaSvc: captchaSvc}
+}
+
+// Captcha handles GET /api/v1/auth/captcha.
+// Generates a new captcha image and returns the captcha ID + base64 image.
+func (h *AuthHandler) Captcha(c *gin.Context) {
+	result, err := h.captchaSvc.Generate()
+	if err != nil {
+		response.Error(c, errcode.ErrInternalServer)
+		return
+	}
+	response.OK(c, gin.H{
+		"captcha_id":    result.CaptchaID,
+		"captcha_image": result.Image,
+	})
 }
 
 // Register handles POST /api/v1/auth/register.
@@ -28,6 +44,12 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	var req request.RegisterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.ValidationError(c, err.Error())
+		return
+	}
+
+	// Verify captcha first.
+	if !h.captchaSvc.Verify(req.CaptchaID, req.CaptchaAnswer) {
+		response.Error(c, errcode.ErrCaptchaInvalid)
 		return
 	}
 
@@ -82,6 +104,12 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	var req request.LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.ValidationError(c, err.Error())
+		return
+	}
+
+	// Verify captcha.
+	if !h.captchaSvc.Verify(req.CaptchaID, req.CaptchaAnswer) {
+		response.Error(c, errcode.ErrCaptchaInvalid)
 		return
 	}
 

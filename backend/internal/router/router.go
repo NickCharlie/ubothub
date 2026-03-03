@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
 	"github.com/NickCharlie/ubothub/backend/internal/adapter"
+	"github.com/NickCharlie/ubothub/backend/internal/captcha"
 	"github.com/NickCharlie/ubothub/backend/internal/config"
 	"github.com/NickCharlie/ubothub/backend/internal/event"
 	"github.com/NickCharlie/ubothub/backend/internal/handler"
@@ -97,8 +98,11 @@ func Setup(db *gorm.DB, rdb *redis.Client, store storage.ObjectStorage, cfg *con
 	legalLog := logger.Named(rootLogger, "legal")
 	legalSvc := service.NewLegalService(legalRepo, legalLog)
 
+	// Initialize captcha service (Redis-backed for distributed deployments).
+	captchaSvc := captcha.NewService(rdb)
+
 	// Initialize handlers.
-	authHandler := handler.NewAuthHandler(authSvc, legalSvc)
+	authHandler := handler.NewAuthHandler(authSvc, legalSvc, captchaSvc)
 	userHandler := handler.NewUserHandler(userSvc)
 	botHandler := handler.NewBotHandler(botSvc)
 	assetHandler := handler.NewAssetHandler(assetSvc)
@@ -115,6 +119,7 @@ func Setup(db *gorm.DB, rdb *redis.Client, store storage.ObjectStorage, cfg *con
 		KeyPrefix:   "rl:auth",
 	}))
 	{
+		authRoutes.GET("/captcha", authHandler.Captcha)
 		authRoutes.POST("/register", authHandler.Register)
 		authRoutes.POST("/login", authHandler.Login)
 		authRoutes.POST("/refresh", authHandler.Refresh)

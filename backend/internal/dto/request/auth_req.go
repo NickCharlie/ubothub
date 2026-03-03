@@ -7,12 +7,16 @@ type RegisterRequest struct {
 	Password      string `json:"password" binding:"required,min=8,max=128"`
 	AcceptTerms   bool   `json:"accept_terms" binding:"required"`
 	AcceptPrivacy bool   `json:"accept_privacy" binding:"required"`
+	CaptchaID     string `json:"captcha_id" binding:"required"`
+	CaptchaAnswer string `json:"captcha_answer" binding:"required"`
 }
 
 // LoginRequest represents the user login request payload.
 type LoginRequest struct {
-	Email    string `json:"email" binding:"required,email"`
-	Password string `json:"password" binding:"required"`
+	Email         string `json:"email" binding:"required,email"`
+	Password      string `json:"password" binding:"required"`
+	CaptchaID     string `json:"captcha_id" binding:"required"`
+	CaptchaAnswer string `json:"captcha_answer" binding:"required"`
 }
 
 // RefreshTokenRequest represents the token refresh request payload.
