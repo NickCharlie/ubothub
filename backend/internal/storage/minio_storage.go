@@ -12,9 +12,8 @@ import (
 
 // MinIOStorage implements ObjectStorage using MinIO as the backing store.
 type MinIOStorage struct {
-	client           *minio.Client
-	externalEndpoint string // If set, presigned URLs are rewritten to this host.
-	useSSL           bool
+	client         *minio.Client
+	presignClient  *minio.Client // Separate client for presigned URLs (uses external endpoint).
 }
 
 // MinIOConfig holds connection parameters for MinIO.
@@ -27,6 +26,8 @@ type MinIOConfig struct {
 }
 
 // NewMinIOStorage creates a new MinIO storage client.
+// If ExternalEndpoint is set, a second client is created for generating
+// presigned URLs with signatures that match the external address.
 func NewMinIOStorage(cfg MinIOConfig) (*MinIOStorage, error) {
 	client, err := minio.New(cfg.Endpoint, &minio.Options{
 		Creds:  credentials.NewStaticV4(cfg.AccessKey, cfg.SecretKey, ""),
@@ -35,10 +36,21 @@ func NewMinIOStorage(cfg MinIOConfig) (*MinIOStorage, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	presignClient := client
+	if cfg.ExternalEndpoint != "" {
+		presignClient, err = minio.New(cfg.ExternalEndpoint, &minio.Options{
+			Creds:  credentials.NewStaticV4(cfg.AccessKey, cfg.SecretKey, ""),
+			Secure: cfg.UseSSL,
+		})
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	return &MinIOStorage{
-		client:           client,
-		externalEndpoint: cfg.ExternalEndpoint,
-		useSSL:           cfg.UseSSL,
+		client:        client,
+		presignClient: presignClient,
 	}, nil
 }
 
@@ -70,35 +82,20 @@ func (s *MinIOStorage) DeleteObject(ctx context.Context, bucket, key string) err
 }
 
 func (s *MinIOStorage) PresignedPutURL(ctx context.Context, bucket, key string, expires time.Duration) (string, error) {
-	u, err := s.client.PresignedPutObject(ctx, bucket, key, expires)
+	u, err := s.presignClient.PresignedPutObject(ctx, bucket, key, expires)
 	if err != nil {
 		return "", err
 	}
-	return s.rewriteURL(u), nil
+	return u.String(), nil
 }
 
 func (s *MinIOStorage) PresignedGetURL(ctx context.Context, bucket, key string, expires time.Duration) (string, error) {
 	reqParams := make(url.Values)
-	u, err := s.client.PresignedGetObject(ctx, bucket, key, expires, reqParams)
+	u, err := s.presignClient.PresignedGetObject(ctx, bucket, key, expires, reqParams)
 	if err != nil {
 		return "", err
 	}
-	return s.rewriteURL(u), nil
-}
-
-// rewriteURL replaces the internal MinIO host with the external endpoint
-// so that presigned URLs are accessible from the browser.
-func (s *MinIOStorage) rewriteURL(u *url.URL) string {
-	if s.externalEndpoint == "" {
-		return u.String()
-	}
-	u.Host = s.externalEndpoint
-	if s.useSSL {
-		u.Scheme = "https"
-	} else {
-		u.Scheme = "http"
-	}
-	return u.String()
+	return u.String(), nil
 }
 
 func (s *MinIOStorage) ObjectExists(ctx context.Context, bucket, key string) (bool, error) {
