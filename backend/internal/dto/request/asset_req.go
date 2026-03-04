@@ -9,22 +9,22 @@ type PresignedUploadRequest struct {
 
 // CompleteUploadRequest confirms upload completion and creates the asset record.
 type CompleteUploadRequest struct {
-	FileKey     string `json:"file_key" binding:"required"`
-	Name        string `json:"name" binding:"required,min=1,max=255"`
-	Description string `json:"description" binding:"omitempty,max=2048"`
-	Category    string `json:"category" binding:"required,oneof=model_3d model_live2d motion texture"`
-	Format      string `json:"format" binding:"required"`
-	FileSize    int64  `json:"file_size" binding:"required,min=1"`
-	IsPublic    bool   `json:"is_public"`
-	Tags        string `json:"tags" binding:"omitempty"`
+	FileKey     string   `json:"file_key" binding:"required"`
+	Name        string   `json:"name" binding:"required,min=1,max=255"`
+	Description string   `json:"description" binding:"omitempty,max=2048"`
+	Category    string   `json:"category" binding:"required,oneof=model_3d model_live2d motion texture"`
+	Format      string   `json:"format" binding:"required"`
+	FileSize    int64    `json:"file_size" binding:"required,min=1"`
+	IsPublic    bool     `json:"is_public"`
+	Tags        []string `json:"tags" binding:"omitempty"`
 }
 
 // UpdateAssetRequest represents an asset metadata update.
 type UpdateAssetRequest struct {
-	Name        string `json:"name" binding:"omitempty,min=1,max=255"`
-	Description string `json:"description" binding:"omitempty,max=2048"`
-	IsPublic    *bool  `json:"is_public" binding:"omitempty"`
-	Tags        string `json:"tags" binding:"omitempty"`
+	Name        string   `json:"name" binding:"omitempty,min=1,max=255"`
+	Description string   `json:"description" binding:"omitempty,max=2048"`
+	IsPublic    *bool    `json:"is_public" binding:"omitempty"`
+	Tags        []string `json:"tags" binding:"omitempty"`
 }
 
 // ListAssetRequest represents pagination and filter parameters.

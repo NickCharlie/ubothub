@@ -31,7 +31,7 @@ storage:
   provider: "minio"
   minio:
     endpoint: "minio:9000"
-    external_endpoint: "localhost:19000"
+    external_endpoint: "localhost"
     access_key: "minioadmin"
     secret_key: "minioadmin123"
     use_ssl: false

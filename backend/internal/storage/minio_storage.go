@@ -42,6 +42,7 @@ func NewMinIOStorage(cfg MinIOConfig) (*MinIOStorage, error) {
 		presignClient, err = minio.New(cfg.ExternalEndpoint, &minio.Options{
 			Creds:  credentials.NewStaticV4(cfg.AccessKey, cfg.SecretKey, ""),
 			Secure: cfg.UseSSL,
+			Region: "us-east-1", // Avoids getBucketLocation() network call to unreachable external endpoint.
 		})
 		if err != nil {
 			return nil, err

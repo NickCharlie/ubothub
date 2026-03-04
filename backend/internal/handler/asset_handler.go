@@ -2,7 +2,6 @@ package handler
 
 import (
 	"errors"
-	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/NickCharlie/ubothub/backend/internal/dto/request"
@@ -76,18 +75,11 @@ func (h *AssetHandler) CompleteUpload(c *gin.Context) {
 	}
 
 	userID := c.GetString("user_id")
-	var tags []string
-	if req.Tags != "" {
-		tags = strings.Split(req.Tags, ",")
-		for i := range tags {
-			tags[i] = strings.TrimSpace(tags[i])
-		}
-	}
 
 	asset, err := h.assetSvc.CompleteUpload(
 		c.Request.Context(), userID,
 		req.FileKey, req.Name, req.Description, req.Category, req.Format,
-		req.FileSize, req.IsPublic, tags,
+		req.FileSize, req.IsPublic, req.Tags,
 	)
 	if err != nil {
 		handleAssetError(c, err)
@@ -230,17 +222,9 @@ func (h *AssetHandler) Update(c *gin.Context) {
 	assetID := c.Param("id")
 	userID := c.GetString("user_id")
 
-	var tags []string
-	if req.Tags != "" {
-		tags = strings.Split(req.Tags, ",")
-		for i := range tags {
-			tags[i] = strings.TrimSpace(tags[i])
-		}
-	}
-
 	asset, err := h.assetSvc.UpdateAsset(
 		c.Request.Context(), assetID, userID,
-		req.Name, req.Description, req.IsPublic, tags,
+		req.Name, req.Description, req.IsPublic, req.Tags,
 	)
 	if err != nil {
 		handleAssetError(c, err)
