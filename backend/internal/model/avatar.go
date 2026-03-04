@@ -10,7 +10,7 @@ import (
 type AvatarConfig struct {
 	ID            string         `gorm:"type:char(26);primaryKey" json:"id"`
 	UserID        string         `gorm:"type:char(26);index;not null;column:user_id" json:"user_id"`
-	BotID         string         `gorm:"type:char(26);index;column:bot_id" json:"bot_id"`
+	BotID         *string        `gorm:"type:char(26);index;column:bot_id" json:"bot_id"`
 	Name          string         `gorm:"type:varchar(128);not null" json:"name"`
 	Description   string         `gorm:"type:text" json:"description"`
 	RenderType    string         `gorm:"type:varchar(16);not null;column:render_type" json:"render_type"`

@@ -4,7 +4,7 @@ package response
 type AvatarResponse struct {
 	ID            string              `json:"id"`
 	UserID        string              `json:"user_id"`
-	BotID         string              `json:"bot_id"`
+	BotID         *string             `json:"bot_id"`
 	Name          string              `json:"name"`
 	Description   string              `json:"description"`
 	RenderType    string              `json:"render_type"`

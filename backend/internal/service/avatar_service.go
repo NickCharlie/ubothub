@@ -179,7 +179,7 @@ func (s *AvatarService) BindBot(ctx context.Context, avatarID, userID, botID str
 		return ErrAvatarBotConflict
 	}
 
-	avatar.BotID = botID
+	avatar.BotID = &botID
 	if err := s.avatarRepo.Update(ctx, avatar); err != nil {
 		return fmt.Errorf("bind bot: %w", err)
 	}
@@ -285,8 +285,8 @@ func (s *AvatarService) GetAvatarPublic(ctx context.Context, avatarID string) (*
 	}
 
 	// Only allow viewing if the avatar's bot is public.
-	if avatar.BotID != "" {
-		bot, err := s.botRepo.FindByID(ctx, avatar.BotID)
+	if avatar.BotID != nil && *avatar.BotID != "" {
+		bot, err := s.botRepo.FindByID(ctx, *avatar.BotID)
 		if err != nil || bot.Visibility != "public" {
 			return nil, ErrAvatarNotFound
 		}
