@@ -12,15 +12,18 @@ import (
 
 // MinIOStorage implements ObjectStorage using MinIO as the backing store.
 type MinIOStorage struct {
-	client *minio.Client
+	client           *minio.Client
+	externalEndpoint string // If set, presigned URLs are rewritten to this host.
+	useSSL           bool
 }
 
 // MinIOConfig holds connection parameters for MinIO.
 type MinIOConfig struct {
-	Endpoint  string
-	AccessKey string
-	SecretKey string
-	UseSSL    bool
+	Endpoint         string
+	ExternalEndpoint string
+	AccessKey        string
+	SecretKey        string
+	UseSSL           bool
 }
 
 // NewMinIOStorage creates a new MinIO storage client.
@@ -32,7 +35,11 @@ func NewMinIOStorage(cfg MinIOConfig) (*MinIOStorage, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &MinIOStorage{client: client}, nil
+	return &MinIOStorage{
+		client:           client,
+		externalEndpoint: cfg.ExternalEndpoint,
+		useSSL:           cfg.UseSSL,
+	}, nil
 }
 
 // EnsureBucket creates the bucket if it does not exist.
@@ -67,7 +74,7 @@ func (s *MinIOStorage) PresignedPutURL(ctx context.Context, bucket, key string, 
 	if err != nil {
 		return "", err
 	}
-	return u.String(), nil
+	return s.rewriteURL(u), nil
 }
 
 func (s *MinIOStorage) PresignedGetURL(ctx context.Context, bucket, key string, expires time.Duration) (string, error) {
@@ -76,7 +83,22 @@ func (s *MinIOStorage) PresignedGetURL(ctx context.Context, bucket, key string, 
 	if err != nil {
 		return "", err
 	}
-	return u.String(), nil
+	return s.rewriteURL(u), nil
+}
+
+// rewriteURL replaces the internal MinIO host with the external endpoint
+// so that presigned URLs are accessible from the browser.
+func (s *MinIOStorage) rewriteURL(u *url.URL) string {
+	if s.externalEndpoint == "" {
+		return u.String()
+	}
+	u.Host = s.externalEndpoint
+	if s.useSSL {
+		u.Scheme = "https"
+	} else {
+		u.Scheme = "http"
+	}
+	return u.String()
 }
 
 func (s *MinIOStorage) ObjectExists(ctx context.Context, bucket, key string) (bool, error) {

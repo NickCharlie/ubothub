@@ -84,11 +84,12 @@ type StorageConfig struct {
 
 // MinIOConfig holds MinIO connection configuration.
 type MinIOConfig struct {
-	Endpoint  string `mapstructure:"endpoint"`
-	AccessKey string `mapstructure:"access_key"`
-	SecretKey string `mapstructure:"secret_key"`
-	UseSSL    bool   `mapstructure:"use_ssl"`
-	Bucket    string `mapstructure:"bucket"`
+	Endpoint         string `mapstructure:"endpoint"`
+	ExternalEndpoint string `mapstructure:"external_endpoint"`
+	AccessKey        string `mapstructure:"access_key"`
+	SecretKey        string `mapstructure:"secret_key"`
+	UseSSL           bool   `mapstructure:"use_ssl"`
+	Bucket           string `mapstructure:"bucket"`
 }
 
 // AliyunOSSConfig holds Alibaba Cloud OSS configuration.

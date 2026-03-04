@@ -12,10 +12,11 @@ func NewFromConfig(cfg config.StorageConfig) (ObjectStorage, error) {
 	switch cfg.Provider {
 	case "minio":
 		return NewMinIOStorage(MinIOConfig{
-			Endpoint:  cfg.MinIO.Endpoint,
-			AccessKey: cfg.MinIO.AccessKey,
-			SecretKey: cfg.MinIO.SecretKey,
-			UseSSL:    cfg.MinIO.UseSSL,
+			Endpoint:         cfg.MinIO.Endpoint,
+			ExternalEndpoint: cfg.MinIO.ExternalEndpoint,
+			AccessKey:        cfg.MinIO.AccessKey,
+			SecretKey:        cfg.MinIO.SecretKey,
+			UseSSL:           cfg.MinIO.UseSSL,
 		})
 	case "aliyun_oss":
 		return NewAliyunOSSStorage(AliyunOSSConfig{
