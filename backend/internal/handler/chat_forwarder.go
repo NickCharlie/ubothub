@@ -92,16 +92,11 @@ func (f *ChatForwarder) forwardToAstrBot(
 	}
 
 	apiKey, _ := configMap["api_key"].(string)
-	platform, _ := configMap["platform"].(string)
-	if platform == "" {
-		platform = "ubothub"
-	}
 
 	f.logger.Debug("astrbot chat config",
 		zap.String("bot_id", botID),
 		zap.String("webhook_url", webhookURL),
 		zap.Int("api_key_len", len(apiKey)),
-		zap.String("platform", platform),
 	)
 
 	// Get the raw AstrBot adapter (unwrap resilient wrapper).
@@ -127,10 +122,11 @@ func (f *ChatForwarder) forwardToAstrBot(
 		return
 	}
 
-	// Build session ID for AstrBot context continuity.
-	sessionID := fmt.Sprintf("%s_%s", platform, userID)
+	// Build username for AstrBot session context.
+	username := fmt.Sprintf("ubothub_%s", userID)
+	sessionID := fmt.Sprintf("ubothub_%s_%s", userID, botID)
 
-	chatResp, err := astrBotAdpt.Chat(ctx, webhookURL, apiKey, platform, userID, "", content, sessionID)
+	chatResp, err := astrBotAdpt.Chat(ctx, webhookURL, apiKey, username, sessionID, content)
 	if err != nil {
 		errMsg := err.Error()
 		if strings.Contains(errMsg, "connection refused") {
@@ -144,13 +140,10 @@ func (f *ChatForwarder) forwardToAstrBot(
 		return
 	}
 
-	if !chatResp.Success {
-		f.sendError(client, botID, "AstrBot returned an error: "+chatResp.Error)
-		return
+	replyText := chatResp.Text
+	if replyText == "" {
+		replyText = "(empty response)"
 	}
-
-	// Extract text content from AstrBot response components.
-	replyText := extractAstrBotText(chatResp.Response)
 
 	client.Hub().SendToClient(client, &ws.OutboundMessage{
 		Type:      ws.TypeBotReply,
@@ -159,9 +152,7 @@ func (f *ChatForwarder) forwardToAstrBot(
 		Sender:    "AstrBot",
 		Timestamp: time.Now().Unix(),
 		Data: map[string]interface{}{
-			"event_id":   chatResp.EventID,
 			"session_id": chatResp.SessionID,
-			"raw":        chatResp.Response,
 		},
 	})
 }
@@ -173,26 +164,4 @@ func (f *ChatForwarder) sendError(client *ws.Client, botID, errMsg string) {
 		Content:   errMsg,
 		Timestamp: time.Now().Unix(),
 	})
-}
-
-// extractAstrBotText extracts plain text from AstrBot response components.
-func extractAstrBotText(components []map[string]interface{}) string {
-	var parts []string
-	for _, comp := range components {
-		content, ok := comp["content"].(map[string]interface{})
-		if !ok {
-			continue
-		}
-		data, ok := content["data"].(map[string]interface{})
-		if !ok {
-			continue
-		}
-		if text, ok := data["text"].(string); ok && text != "" {
-			parts = append(parts, text)
-		}
-	}
-	if len(parts) == 0 {
-		return "(empty response)"
-	}
-	return strings.Join(parts, "")
 }

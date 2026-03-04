@@ -1,12 +1,14 @@
 package adapter
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 )
 
 // AstrBotAdapter integrates with AstrBot via its HTTP API.
@@ -152,39 +154,28 @@ func (a *AstrBotAdapter) SendMessage(ctx context.Context, webhookURL string, msg
 	return nil
 }
 
-// AstrBotChatRequest represents the AstrBot /api/v1/message request body.
+// AstrBotChatRequest represents the AstrBot /api/v1/chat request body.
 type AstrBotChatRequest struct {
 	Message   interface{} `json:"message"`
-	Platform  string      `json:"platform"`
-	UserID    string      `json:"user_id"`
-	Nickname  string      `json:"nickname"`
+	Username  string      `json:"username"`
 	SessionID string      `json:"session_id,omitempty"`
-	Timeout   int         `json:"timeout,omitempty"`
 }
 
-// AstrBotChatResponse represents the AstrBot /api/v1/message response.
+// AstrBotChatResponse holds the accumulated result from AstrBot's SSE chat stream.
 type AstrBotChatResponse struct {
-	Success   bool                     `json:"success"`
-	Response  []map[string]interface{} `json:"response"`
-	EventID   string                   `json:"event_id"`
-	SessionID string                   `json:"session_id"`
-	Timestamp float64                  `json:"timestamp"`
-	Error     string                   `json:"error,omitempty"`
+	Text      string `json:"text"`
+	SessionID string `json:"session_id"`
 }
 
-// Chat sends a user message to AstrBot's HTTP chat API and returns the response.
-// This is the primary method for user→AstrBot→response flow.
-// baseURL: AstrBot API base URL (e.g., http://localhost:6185)
-// apiKey: AstrBot auth token
-// platform: platform identifier (e.g., "ubothub")
-func (a *AstrBotAdapter) Chat(ctx context.Context, baseURL, apiKey, platform, userID, nickname, message, sessionID string) (*AstrBotChatResponse, error) {
+// Chat sends a user message to AstrBot's Open API (/api/v1/chat) and collects
+// the SSE stream into a single text response.
+// baseURL: AstrBot base URL (e.g., http://localhost:6185)
+// apiKey: AstrBot API key (raw, not hashed)
+func (a *AstrBotAdapter) Chat(ctx context.Context, baseURL, apiKey, username, sessionID, message string) (*AstrBotChatResponse, error) {
 	body := AstrBotChatRequest{
 		Message:   message,
-		Platform:  platform,
-		UserID:    userID,
-		Nickname:  nickname,
+		Username:  username,
 		SessionID: sessionID,
-		Timeout:   30,
 	}
 
 	jsonBody, err := json.Marshal(body)
@@ -192,7 +183,7 @@ func (a *AstrBotAdapter) Chat(ctx context.Context, baseURL, apiKey, platform, us
 		return nil, fmt.Errorf("marshal chat request: %w", err)
 	}
 
-	endpoint := baseURL + "/api/v1/message"
+	endpoint := baseURL + "/api/v1/chat"
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(jsonBody))
 	if err != nil {
 		return nil, fmt.Errorf("create request: %w", err)
@@ -200,7 +191,7 @@ func (a *AstrBotAdapter) Chat(ctx context.Context, baseURL, apiKey, platform, us
 
 	req.Header.Set("Content-Type", "application/json")
 	if apiKey != "" {
-		req.Header.Set("Authorization", "Bearer "+apiKey)
+		req.Header.Set("X-API-Key", apiKey)
 	}
 
 	resp, err := a.client.Do(req)
@@ -209,19 +200,69 @@ func (a *AstrBotAdapter) Chat(ctx context.Context, baseURL, apiKey, platform, us
 	}
 	defer resp.Body.Close()
 
-	respBody, err := io.ReadAll(io.LimitReader(resp.Body, 64*1024))
-	if err != nil {
-		return nil, fmt.Errorf("read response: %w", err)
-	}
-
 	if resp.StatusCode >= 400 {
-		return nil, fmt.Errorf("astrbot returned %d: %s", resp.StatusCode, string(respBody))
+		errBody, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
+		return nil, fmt.Errorf("astrbot returned %d: %s", resp.StatusCode, string(errBody))
 	}
 
-	var chatResp AstrBotChatResponse
-	if err := json.Unmarshal(respBody, &chatResp); err != nil {
-		return nil, fmt.Errorf("parse response: %w", err)
+	// Parse SSE stream. AstrBot streams "data: {json}\n\n" events.
+	// Collect all "plain" text chunks until "end" event.
+	result := &AstrBotChatResponse{}
+	return result, a.parseSSEStream(resp.Body, result)
+}
+
+// parseSSEStream reads an SSE text/event-stream body and accumulates text content.
+func (a *AstrBotAdapter) parseSSEStream(body io.Reader, result *AstrBotChatResponse) error {
+	scanner := bufio.NewScanner(body)
+	// Allow large SSE lines (up to 256KB).
+	scanner.Buffer(make([]byte, 0, 64*1024), 256*1024)
+
+	for scanner.Scan() {
+		line := scanner.Text()
+		if !strings.HasPrefix(line, "data: ") {
+			continue
+		}
+		data := line[6:] // strip "data: " prefix
+
+		var event map[string]interface{}
+		if err := json.Unmarshal([]byte(data), &event); err != nil {
+			continue
+		}
+
+		msgType, _ := event["type"].(string)
+
+		// Capture session_id from the initial event.
+		if msgType == "session_id" {
+			if sid, ok := event["session_id"].(string); ok {
+				result.SessionID = sid
+			}
+			continue
+		}
+
+		// End of stream.
+		if msgType == "end" || msgType == "complete" {
+			break
+		}
+
+		// Error from AstrBot.
+		if msgType == "error" {
+			errMsg, _ := event["data"].(string)
+			if errMsg == "" {
+				errMsg = "unknown error"
+			}
+			return fmt.Errorf("astrbot error: %s", errMsg)
+		}
+
+		// Accumulate plain text chunks (skip tool_call, reasoning, etc.).
+		if msgType == "plain" {
+			chainType, _ := event["chain_type"].(string)
+			if chainType == "tool_call" || chainType == "tool_call_result" || chainType == "reasoning" || chainType == "agent_stats" {
+				continue
+			}
+			text, _ := event["data"].(string)
+			result.Text += text
+		}
 	}
 
-	return &chatResp, nil
+	return scanner.Err()
 }
