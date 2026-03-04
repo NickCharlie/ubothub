@@ -51,4 +51,9 @@ export const plazaApi = {
   getBot: (id: string) => publicHttp.get(`/plaza/bots/${id}`),
 
   getAvatar: (id: string) => publicHttp.get(`/plaza/avatars/${id}`),
+
+  getAssetDownloadURL: (assetId: string) =>
+    publicHttp.get<{ data: { download_url: string; expires_in: number } }>(
+      `/plaza/assets/${assetId}/download`,
+    ),
 };

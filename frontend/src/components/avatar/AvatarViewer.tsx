@@ -75,10 +75,7 @@ function VRMScene({ modelUrl, onLoad, onProgress, onError }: VRMSceneProps) {
       if (t < 0.06) {
         adapterRef.current.setExpressionWeight("blink", t / 0.06);
       } else if (t < 0.12) {
-        adapterRef.current.setExpressionWeight(
-          "blink",
-          1 - (t - 0.06) / 0.06,
-        );
+        adapterRef.current.setExpressionWeight("blink", 1 - (t - 0.06) / 0.06);
       } else {
         adapterRef.current.setExpressionWeight("blink", 0);
         isBlinking.current = false;
@@ -99,6 +96,8 @@ export interface AvatarViewerProps {
   cameraPosition?: [number, number, number];
   cameraTarget?: [number, number, number];
   onAdapterReady?: (adapter: ModelAdapter) => void;
+  /** When true, loading/error overlays use no background so the viewer blends into the page. */
+  transparent?: boolean;
 }
 
 function CameraSetup({
@@ -112,9 +111,7 @@ function CameraSetup({
 
   useEffect(() => {
     camera.position.set(...position);
-    (camera as THREE.PerspectiveCamera).lookAt(
-      new THREE.Vector3(...target),
-    );
+    (camera as THREE.PerspectiveCamera).lookAt(new THREE.Vector3(...target));
   }, [camera, position, target]);
 
   return null;
@@ -128,6 +125,7 @@ export default function AvatarViewer({
   cameraPosition = [0, 1.1, 2.5],
   cameraTarget = [0, 1.0, 0],
   onAdapterReady,
+  transparent = false,
 }: AvatarViewerProps) {
   const [loading, setLoading] = useState(true);
   const [progress, setProgress] = useState(0);
@@ -153,10 +151,7 @@ export default function AvatarViewer({
   }, []);
 
   return (
-    <div
-      className={`relative ${className}`}
-      style={{ width, height }}
-    >
+    <div className={`relative ${className}`} style={{ width, height }}>
       <Canvas
         dpr={[1, 2]}
         shadows
@@ -193,7 +188,9 @@ export default function AvatarViewer({
 
       {/* Loading overlay */}
       {loading && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/20 backdrop-blur-sm rounded-2xl">
+        <div
+          className={`absolute inset-0 flex flex-col items-center justify-center ${transparent ? "" : "bg-black/20 backdrop-blur-sm rounded-2xl"}`}
+        >
           <div className="w-8 h-8 border-2 border-white/20 border-t-blue-400 rounded-full animate-spin mb-3" />
           <p className="text-xs text-white/50">
             Loading model... {progress > 0 ? `${progress}%` : ""}
@@ -203,7 +200,9 @@ export default function AvatarViewer({
 
       {/* Error overlay */}
       {error && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/20 backdrop-blur-sm rounded-2xl">
+        <div
+          className={`absolute inset-0 flex flex-col items-center justify-center ${transparent ? "" : "bg-black/20 backdrop-blur-sm rounded-2xl"}`}
+        >
           <p className="text-xs text-red-400/70 text-center px-4">
             Failed to load model
           </p>
@@ -241,10 +240,7 @@ export async function playAnimation(
 
   const action = adapter.mixer.clipAction(clip);
   action.reset();
-  action.setLoop(
-    loop ? THREE.LoopRepeat : THREE.LoopOnce,
-    loop ? Infinity : 1,
-  );
+  action.setLoop(loop ? THREE.LoopRepeat : THREE.LoopOnce, loop ? Infinity : 1);
   action.clampWhenFinished = !loop;
   action.fadeIn(0.3);
   action.play();

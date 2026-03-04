@@ -72,7 +72,7 @@ export default function PlazaChatPage() {
             const avatarData = avatarRes.data.data;
             setAvatar(avatarData);
 
-            // Find the model asset (role=body for the main 3D model)
+            // Find the model asset (role=primary_model for the main 3D model)
             if (avatarData.avatar_assets) {
               const bodyAsset = avatarData.avatar_assets.find(
                 (a: { role: string }) =>
@@ -81,10 +81,12 @@ export default function PlazaChatPage() {
                   a.role === "model",
               );
               if (bodyAsset) {
-                // Build download URL for the asset
-                setAvatarModelUrl(
-                  `/api/v1/assets/${bodyAsset.asset_id}/download`,
+                // Fetch presigned download URL from the public plaza endpoint
+                const dlRes = await plazaApi.getAssetDownloadURL(
+                  bodyAsset.asset_id,
                 );
+                const downloadUrl = dlRes.data.data.download_url;
+                setAvatarModelUrl(downloadUrl);
               }
             }
           }
@@ -345,10 +347,10 @@ export default function PlazaChatPage() {
       <div
         className={`flex-1 flex min-h-0 gap-4 ${hasAvatar ? "flex-row" : "flex-col"}`}
       >
-        {/* 3D Avatar panel */}
+        {/* 3D Avatar panel — transparent, blends into background */}
         {hasAvatar && (
           <motion.div
-            className="glass rounded-2xl overflow-hidden flex-shrink-0 hidden lg:block"
+            className="flex-shrink-0 hidden lg:block pointer-events-none"
             style={{ width: 360, height: "100%" }}
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
@@ -366,6 +368,7 @@ export default function PlazaChatPage() {
                 onAdapterReady={handleAdapterReady}
                 cameraPosition={[0, 1.2, 2.0]}
                 cameraTarget={[0, 1.0, 0]}
+                transparent
               />
             </Suspense>
           </motion.div>

@@ -2,6 +2,7 @@ package handler
 
 import (
 	"errors"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/NickCharlie/ubothub/backend/internal/dto/request"
@@ -302,14 +303,35 @@ func (h *AssetHandler) Thumbnail(c *gin.Context) {
 	resp.OK(c, gin.H{"thumbnail_url": url, "expires_in": 3600})
 }
 
+// PublicDownload handles GET /api/v1/plaza/assets/:id/download.
+// @Summary Get public asset download URL
+// @Description Returns a presigned download URL for assets bound to public bot avatars.
+// @Tags Plaza
+// @Produce json
+// @Param id path string true "Asset ID"
+// @Success 200 {object} response.CommonResponse
+// @Failure 404 {object} response.CommonResponse
+// @Router /plaza/assets/{id}/download [get]
+func (h *AssetHandler) PublicDownload(c *gin.Context) {
+	assetID := c.Param("id")
+
+	url, err := h.assetSvc.GetPublicDownloadURL(c.Request.Context(), assetID)
+	if err != nil {
+		handleAssetError(c, err)
+		return
+	}
+
+	resp.OK(c, gin.H{"download_url": url, "expires_in": 3600})
+}
+
 func toAssetResponse(asset *model.Asset) response.AssetResponse {
 	tags := []string{}
 	if asset.Tags != nil {
 		tags = asset.Tags
 	}
 	return response.AssetResponse{
-		ID:            asset.ID,
-		UserID:        asset.UserID,
+		ID:            strings.TrimSpace(asset.ID),
+		UserID:        strings.TrimSpace(asset.UserID),
 		Name:          asset.Name,
 		Description:   asset.Description,
 		Category:      asset.Category,

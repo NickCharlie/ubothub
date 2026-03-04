@@ -2,6 +2,7 @@ package handler
 
 import (
 	"errors"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/NickCharlie/ubothub/backend/internal/dto/request"
@@ -290,10 +291,17 @@ func (h *AvatarHandler) UpdateActionMapping(c *gin.Context) {
 }
 
 func toAvatarResponse(avatar *model.AvatarConfig) response.AvatarResponse {
+	// Trim char(26) padded IDs to avoid trailing spaces in URLs.
+	var botID *string
+	if avatar.BotID != nil {
+		trimmed := strings.TrimSpace(*avatar.BotID)
+		botID = &trimmed
+	}
+
 	r := response.AvatarResponse{
-		ID:            avatar.ID,
-		UserID:        avatar.UserID,
-		BotID:         avatar.BotID,
+		ID:            strings.TrimSpace(avatar.ID),
+		UserID:        strings.TrimSpace(avatar.UserID),
+		BotID:         botID,
 		Name:          avatar.Name,
 		Description:   avatar.Description,
 		RenderType:    avatar.RenderType,
@@ -308,7 +316,7 @@ func toAvatarResponse(avatar *model.AvatarConfig) response.AvatarResponse {
 		r.AvatarAssets = make([]response.AvatarAssetDetail, 0, len(avatar.AvatarAssets))
 		for _, aa := range avatar.AvatarAssets {
 			r.AvatarAssets = append(r.AvatarAssets, response.AvatarAssetDetail{
-				AssetID:   aa.AssetID,
+				AssetID:   strings.TrimSpace(aa.AssetID),
 				AssetName: aa.Asset.Name,
 				Role:      aa.Role,
 				Config:    aa.Config,

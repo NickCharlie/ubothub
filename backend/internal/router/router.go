@@ -272,6 +272,7 @@ func Setup(ctx context.Context, db *gorm.DB, rdb *redis.Client, store storage.Ob
 	r.GET("/api/v1/plaza/bots", botHandler.ListPublic)
 	r.GET("/api/v1/plaza/bots/:id", botHandler.GetPublic)
 	r.GET("/api/v1/plaza/avatars/:id", avatarHandler.GetPublic)
+	r.GET("/api/v1/plaza/assets/:id/download", assetHandler.PublicDownload)
 
 	// Bot gateway routes (authenticated by bot access token, not JWT).
 	gatewayRoutes := r.Group("/api/v1/gateway")

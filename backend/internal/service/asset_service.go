@@ -292,6 +292,26 @@ func (s *AssetService) GetDownloadURL(ctx context.Context, assetID, userID strin
 	return url, nil
 }
 
+// GetPublicDownloadURL returns a presigned download URL for an asset without
+// requiring authentication. Used by the Plaza to load 3D model files directly.
+// The asset ID is not guessable (xid) and the presigned URL is time-limited.
+func (s *AssetService) GetPublicDownloadURL(ctx context.Context, assetID string) (string, error) {
+	asset, err := s.assetRepo.FindByID(ctx, assetID)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return "", ErrAssetNotFound
+		}
+		return "", fmt.Errorf("find asset: %w", err)
+	}
+
+	url, err := s.storage.PresignedGetURL(ctx, s.bucket, asset.FileKey, presignedURLExpiry)
+	if err != nil {
+		return "", fmt.Errorf("generate download URL: %w", err)
+	}
+
+	return url, nil
+}
+
 // GetThumbnailURL returns a presigned thumbnail URL.
 func (s *AssetService) GetThumbnailURL(ctx context.Context, assetID, userID string) (string, error) {
 	asset, err := s.GetAsset(ctx, assetID, userID)
