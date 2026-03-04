@@ -97,6 +97,13 @@ func (f *ChatForwarder) forwardToAstrBot(
 		platform = "ubothub"
 	}
 
+	f.logger.Debug("astrbot chat config",
+		zap.String("bot_id", botID),
+		zap.String("webhook_url", webhookURL),
+		zap.Int("api_key_len", len(apiKey)),
+		zap.String("platform", platform),
+	)
+
 	// Get the raw AstrBot adapter (unwrap resilient wrapper).
 	adpt, err := f.adapterFactory.Get("astrbot")
 	if err != nil {

@@ -55,7 +55,10 @@ export default function BotDetailPage() {
     timestamp: number;
   }
 
-  const botConfig = useMemo(() => parseConfig(bot?.config || "{}"), [bot?.config]);
+  const botConfig = useMemo(
+    () => parseConfig(bot?.config || "{}"),
+    [bot?.config],
+  );
 
   const loadBot = useCallback(async () => {
     if (!id) return;
@@ -158,8 +161,9 @@ export default function BotDetailPage() {
       description: bot.description,
       webhook_url: bot.webhook_url,
       is_public: bot.visibility === "public",
-      // AstrBot-specific fields from config
-      api_key: cfg.api_key || "",
+      // AstrBot-specific fields from config.
+      // Never pre-fill api_key — the API returns a masked value (***xxxx).
+      api_key: "",
       platform: cfg.platform || "ubothub",
     });
     setEditing(true);
@@ -395,7 +399,8 @@ export default function BotDetailPage() {
               Webhook Endpoint
             </h3>
             <p className="text-xs text-white/40 mb-2">
-              Configure this URL in your bot framework to forward messages to UBotHub.
+              Configure this URL in your bot framework to forward messages to
+              UBotHub.
             </p>
             <div className="flex items-center gap-2">
               <code className="flex-1 text-xs bg-black/30 px-3 py-2 rounded-lg font-mono text-white/60 overflow-x-auto">
@@ -502,7 +507,11 @@ export default function BotDetailPage() {
 
           <Form.Item
             name="webhook_url"
-            label={bot.framework === "astrbot" ? "AstrBot API Base URL" : "Webhook URL"}
+            label={
+              bot.framework === "astrbot"
+                ? "AstrBot API Base URL"
+                : "Webhook URL"
+            }
           >
             <Input
               placeholder={

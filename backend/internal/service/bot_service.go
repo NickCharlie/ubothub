@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/rs/xid"
 	"github.com/NickCharlie/ubothub/backend/internal/model"
@@ -373,9 +374,10 @@ func (s *BotService) mergeConfig(existingConfig, newConfigStr string) (string, e
 	}
 
 	// Overlay: skip empty string values in incoming (means "keep existing").
+	// Also skip masked values (***xxx) that the frontend may send back.
 	for k, v := range incoming {
 		strVal, isStr := v.(string)
-		if isStr && strVal == "" {
+		if isStr && (strVal == "" || strings.HasPrefix(strVal, "***")) {
 			continue
 		}
 		existing[k] = v
