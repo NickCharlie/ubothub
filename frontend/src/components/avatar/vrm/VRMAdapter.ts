@@ -1,5 +1,10 @@
 import * as THREE from "three";
-import { VRM, VRMHumanBoneName, VRMUtils } from "@pixiv/three-vrm";
+import {
+  VRM,
+  VRMHumanBoneName,
+  VRMLoaderPlugin,
+  VRMUtils,
+} from "@pixiv/three-vrm";
 import {
   createVRMAnimationClip,
   VRMAnimationLoaderPlugin,
@@ -145,6 +150,7 @@ export async function loadVRM(
   onProgress?: (percent: number) => void,
 ): Promise<VRMModelAdapter> {
   const loader = new GLTFLoader();
+  loader.register((parser) => new VRMLoaderPlugin(parser));
   loader.register((parser) => new VRMAnimationLoaderPlugin(parser));
 
   const gltf = await loader.loadAsync(url, (event) => {
