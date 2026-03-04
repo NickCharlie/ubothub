@@ -118,7 +118,7 @@ func Setup(ctx context.Context, db *gorm.DB, rdb *redis.Client, store storage.Ob
 	assetLog := logger.Named(rootLogger, "asset")
 	authSvc := service.NewAuthService(userRepo, tokenMgr, rdb, authLog)
 	userSvc := service.NewUserService(userRepo, userLog)
-	botSvc := service.NewBotService(botRepo, encryptor, botLog)
+	botSvc := service.NewBotService(botRepo, avatarRepo, assetRepo, encryptor, botLog)
 	assetSvc := service.NewAssetService(assetRepo, store, bucket, assetLog)
 	avatarLog := logger.Named(rootLogger, "avatar")
 	avatarSvc := service.NewAvatarService(avatarRepo, botRepo, avatarLog)
@@ -312,6 +312,9 @@ func Setup(ctx context.Context, db *gorm.DB, rdb *redis.Client, store storage.Ob
 		authGroup.PUT("/bots/:id", botHandler.Update)
 		authGroup.DELETE("/bots/:id", botHandler.Delete)
 		authGroup.POST("/bots/:id/regenerate-token", botHandler.RegenerateToken)
+		authGroup.POST("/bots/:id/setup-avatar", botHandler.SetupAvatar)
+		authGroup.GET("/bots/:id/avatar", botHandler.GetAvatar)
+		authGroup.DELETE("/bots/:id/avatar", botHandler.RemoveAvatar)
 
 		// Asset management routes.
 		authGroup.GET("/assets", assetHandler.List)

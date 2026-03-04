@@ -76,7 +76,9 @@ export default function PlazaChatPage() {
             if (avatarData.avatar_assets) {
               const bodyAsset = avatarData.avatar_assets.find(
                 (a: { role: string }) =>
-                  a.role === "body" || a.role === "model",
+                  a.role === "primary_model" ||
+                  a.role === "body" ||
+                  a.role === "model",
               );
               if (bodyAsset) {
                 // Build download URL for the asset

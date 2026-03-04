@@ -24,17 +24,21 @@ var sensitiveConfigKeys = []string{"api_key"}
 
 // BotService handles bot management business logic.
 type BotService struct {
-	botRepo   repository.BotRepository
-	encryptor *crypto.Encryptor
-	logger    *zap.Logger
+	botRepo    repository.BotRepository
+	avatarRepo repository.AvatarRepository
+	assetRepo  repository.AssetRepository
+	encryptor  *crypto.Encryptor
+	logger     *zap.Logger
 }
 
 // NewBotService creates a new bot service with optional config encryption.
-func NewBotService(botRepo repository.BotRepository, encryptor *crypto.Encryptor, logger *zap.Logger) *BotService {
+func NewBotService(botRepo repository.BotRepository, avatarRepo repository.AvatarRepository, assetRepo repository.AssetRepository, encryptor *crypto.Encryptor, logger *zap.Logger) *BotService {
 	return &BotService{
-		botRepo:   botRepo,
-		encryptor: encryptor,
-		logger:    logger,
+		botRepo:    botRepo,
+		avatarRepo: avatarRepo,
+		assetRepo:  assetRepo,
+		encryptor:  encryptor,
+		logger:     logger,
 	}
 }
 
@@ -389,6 +393,176 @@ func (s *BotService) mergeConfig(existingConfig, newConfigStr string) (string, e
 		return existingConfig, nil
 	}
 	return s.encryptConfig(string(merged))
+}
+
+// SetupAvatar performs one-click avatar setup for a bot:
+// 1. Creates a new avatar (or reuses the bot's existing avatar)
+// 2. Binds the specified 3D model asset as primary_model
+// 3. Links the avatar to the bot
+// 4. Updates the bot config with avatar_id
+func (s *BotService) SetupAvatar(ctx context.Context, botID, userID, assetID, avatarName string) (*model.AvatarConfig, error) {
+	// 1. Verify bot ownership.
+	bot, err := s.GetBot(ctx, botID, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	// 2. Verify asset exists and belongs to user.
+	asset, err := s.assetRepo.FindByID(ctx, assetID)
+	if err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, ErrAssetNotFound
+		}
+		return nil, fmt.Errorf("find asset: %w", err)
+	}
+	if asset.UserID != userID {
+		return nil, ErrAssetNotFound
+	}
+
+	// Determine render type from asset category.
+	renderType := "3d"
+	if asset.Category == "model_live2d" {
+		renderType = "live2d"
+	}
+
+	if avatarName == "" {
+		avatarName = bot.Name + "'s Avatar"
+	}
+
+	// 3. Check if bot already has a bound avatar.
+	var avatar *model.AvatarConfig
+	existing, err := s.avatarRepo.FindByBotID(ctx, botID)
+	if err == nil && existing != nil {
+		// Reuse existing avatar — load it with assets to find old primary_model bindings.
+		avatar, _ = s.avatarRepo.FindByIDWithAssets(ctx, existing.ID)
+		if avatar == nil {
+			avatar = existing
+		}
+		avatar.Name = sanitize.Text(avatarName)
+		avatar.RenderType = renderType
+		if err := s.avatarRepo.Update(ctx, avatar); err != nil {
+			return nil, fmt.Errorf("update avatar: %w", err)
+		}
+		// Remove existing primary_model bindings.
+		for _, aa := range avatar.AvatarAssets {
+			if aa.Role == "primary_model" {
+				_ = s.avatarRepo.DeleteAvatarAsset(ctx, avatar.ID, aa.AssetID)
+			}
+		}
+	} else {
+		// Create new avatar.
+		avatar = &model.AvatarConfig{
+			ID:            xid.New().String(),
+			UserID:        userID,
+			BotID:         &botID,
+			Name:          sanitize.Text(avatarName),
+			RenderType:    renderType,
+			SceneConfig:   "{}",
+			ActionMapping: "{}",
+		}
+		if err := s.avatarRepo.Create(ctx, avatar); err != nil {
+			return nil, fmt.Errorf("create avatar: %w", err)
+		}
+	}
+
+	// 4. Bind asset to avatar as primary_model.
+	aa := &model.AvatarAsset{
+		ID:        xid.New().String(),
+		AvatarID:  avatar.ID,
+		AssetID:   assetID,
+		Role:      "primary_model",
+		Config:    "{}",
+		SortOrder: 0,
+	}
+	if err := s.avatarRepo.CreateAvatarAsset(ctx, aa); err != nil {
+		return nil, fmt.Errorf("bind asset: %w", err)
+	}
+
+	// 5. Update bot config with avatar_id.
+	configMap, _ := s.decryptConfigMap(bot.Config)
+	if configMap == nil {
+		configMap = make(map[string]interface{})
+	}
+	configMap["avatar_id"] = avatar.ID
+	configJSON, err := json.Marshal(configMap)
+	if err != nil {
+		return nil, fmt.Errorf("marshal config: %w", err)
+	}
+	encryptedConfig, err := s.encryptConfig(string(configJSON))
+	if err != nil {
+		return nil, fmt.Errorf("encrypt config: %w", err)
+	}
+	bot.Config = encryptedConfig
+	if err := s.botRepo.Update(ctx, bot); err != nil {
+		return nil, fmt.Errorf("update bot config: %w", err)
+	}
+
+	// Reload avatar with assets for response.
+	avatar, _ = s.avatarRepo.FindByIDWithAssets(ctx, avatar.ID)
+
+	s.logger.Info("bot avatar setup complete",
+		zap.String("bot_id", botID),
+		zap.String("avatar_id", avatar.ID),
+		zap.String("asset_id", assetID),
+	)
+	return avatar, nil
+}
+
+// RemoveAvatar removes the avatar link from a bot and cleans up the avatar config.
+func (s *BotService) RemoveAvatar(ctx context.Context, botID, userID string) error {
+	bot, err := s.GetBot(ctx, botID, userID)
+	if err != nil {
+		return err
+	}
+
+	// Find and delete the avatar bound to this bot.
+	avatar, err := s.avatarRepo.FindByBotID(ctx, botID)
+	if err != nil {
+		return ErrAvatarNotFound
+	}
+	if avatar.UserID != userID {
+		return ErrAvatarNotFound
+	}
+
+	if err := s.avatarRepo.Delete(ctx, avatar.ID); err != nil {
+		return fmt.Errorf("delete avatar: %w", err)
+	}
+
+	// Remove avatar_id from bot config.
+	configMap, _ := s.decryptConfigMap(bot.Config)
+	if configMap != nil {
+		delete(configMap, "avatar_id")
+		configJSON, _ := json.Marshal(configMap)
+		encryptedConfig, _ := s.encryptConfig(string(configJSON))
+		bot.Config = encryptedConfig
+		_ = s.botRepo.Update(ctx, bot)
+	}
+
+	s.logger.Info("bot avatar removed",
+		zap.String("bot_id", botID),
+		zap.String("avatar_id", avatar.ID),
+	)
+	return nil
+}
+
+// GetBotAvatar returns the avatar bound to a bot (if any).
+func (s *BotService) GetBotAvatar(ctx context.Context, botID, userID string) (*model.AvatarConfig, error) {
+	_, err := s.GetBot(ctx, botID, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	avatar, err := s.avatarRepo.FindByBotID(ctx, botID)
+	if err != nil {
+		return nil, ErrAvatarNotFound
+	}
+
+	// Reload with assets for full response.
+	full, err := s.avatarRepo.FindByIDWithAssets(ctx, avatar.ID)
+	if err != nil {
+		return avatar, nil
+	}
+	return full, nil
 }
 
 // generateAccessToken creates a cryptographically random 32-byte hex token.

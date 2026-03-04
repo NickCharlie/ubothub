@@ -19,6 +19,13 @@ type UpdateBotRequest struct {
 	Visibility  string `json:"visibility" binding:"omitempty,oneof=public private"`
 }
 
+// SetupAvatarRequest represents the one-click bot avatar setup payload.
+// It creates an avatar, binds the 3D model asset, and links the avatar to the bot.
+type SetupAvatarRequest struct {
+	AssetID    string `json:"asset_id" binding:"required"`
+	AvatarName string `json:"avatar_name" binding:"omitempty,max=128"`
+}
+
 // ListBotRequest represents pagination parameters for bot listing.
 type ListBotRequest struct {
 	Page     int `form:"page" binding:"omitempty,min=1"`

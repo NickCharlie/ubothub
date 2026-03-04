@@ -41,6 +41,11 @@ export interface UpdateBotParams {
   config?: string;
 }
 
+export interface SetupAvatarParams {
+  asset_id: string;
+  avatar_name?: string;
+}
+
 export const botApi = {
   list: (page = 1, pageSize = 20) =>
     http.get("/bots", { params: { page, page_size: pageSize } }),
@@ -50,6 +55,10 @@ export const botApi = {
   update: (id: string, data: UpdateBotParams) => http.put(`/bots/${id}`, data),
   delete: (id: string) => http.delete(`/bots/${id}`),
   regenerateToken: (id: string) => http.post(`/bots/${id}/regenerate-token`),
+  setupAvatar: (id: string, data: SetupAvatarParams) =>
+    http.post(`/bots/${id}/setup-avatar`, data),
+  getAvatar: (id: string) => http.get(`/bots/${id}/avatar`),
+  removeAvatar: (id: string) => http.delete(`/bots/${id}/avatar`),
 };
 
 export const adminApi = {

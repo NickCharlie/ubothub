@@ -236,6 +236,104 @@ func (h *BotHandler) toBotResponse(bot *model.Bot, isOwner bool) response.BotRes
 	}
 }
 
+// SetupAvatar handles POST /api/v1/bots/:id/setup-avatar.
+// @Summary One-click avatar setup
+// @Description Creates an avatar, binds the 3D model asset, and links everything to the bot in one step.
+// @Tags Bot
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Bot ID"
+// @Param body body request.SetupAvatarRequest true "Avatar setup payload"
+// @Success 200 {object} response.CommonResponse{data=response.AvatarResponse}
+// @Failure 400 {object} response.CommonResponse
+// @Failure 404 {object} response.CommonResponse
+// @Router /bots/{id}/setup-avatar [post]
+func (h *BotHandler) SetupAvatar(c *gin.Context) {
+	var req request.SetupAvatarRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		resp.ValidationError(c, err.Error())
+		return
+	}
+
+	botID := c.Param("id")
+	userID := c.GetString("user_id")
+
+	avatar, err := h.botSvc.SetupAvatar(c.Request.Context(), botID, userID, req.AssetID, req.AvatarName)
+	if err != nil {
+		switch {
+		case errors.Is(err, service.ErrBotNotFound):
+			resp.Error(c, errcode.ErrBotNotFound)
+		case errors.Is(err, service.ErrAssetNotFound):
+			resp.Error(c, errcode.ErrAssetNotFound)
+		default:
+			resp.Error(c, errcode.ErrInternalServer)
+		}
+		return
+	}
+
+	resp.OK(c, toAvatarResponse(avatar))
+}
+
+// RemoveAvatar handles DELETE /api/v1/bots/:id/avatar.
+// @Summary Remove avatar from bot
+// @Description Removes the avatar configuration and asset bindings from the bot.
+// @Tags Bot
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Bot ID"
+// @Success 200 {object} response.CommonResponse
+// @Failure 404 {object} response.CommonResponse
+// @Router /bots/{id}/avatar [delete]
+func (h *BotHandler) RemoveAvatar(c *gin.Context) {
+	botID := c.Param("id")
+	userID := c.GetString("user_id")
+
+	if err := h.botSvc.RemoveAvatar(c.Request.Context(), botID, userID); err != nil {
+		switch {
+		case errors.Is(err, service.ErrBotNotFound):
+			resp.Error(c, errcode.ErrBotNotFound)
+		case errors.Is(err, service.ErrAvatarNotFound):
+			resp.Error(c, errcode.ErrAvatarNotFound)
+		default:
+			resp.Error(c, errcode.ErrInternalServer)
+		}
+		return
+	}
+
+	resp.OKWithMessage(c, "avatar removed successfully")
+}
+
+// GetAvatar handles GET /api/v1/bots/:id/avatar.
+// @Summary Get bot's avatar
+// @Description Returns the avatar configuration bound to the bot.
+// @Tags Bot
+// @Produce json
+// @Security BearerAuth
+// @Param id path string true "Bot ID"
+// @Success 200 {object} response.CommonResponse{data=response.AvatarResponse}
+// @Failure 404 {object} response.CommonResponse
+// @Router /bots/{id}/avatar [get]
+func (h *BotHandler) GetAvatar(c *gin.Context) {
+	botID := c.Param("id")
+	userID := c.GetString("user_id")
+
+	avatar, err := h.botSvc.GetBotAvatar(c.Request.Context(), botID, userID)
+	if err != nil {
+		switch {
+		case errors.Is(err, service.ErrBotNotFound):
+			resp.Error(c, errcode.ErrBotNotFound)
+		case errors.Is(err, service.ErrAvatarNotFound):
+			resp.Error(c, errcode.ErrAvatarNotFound)
+		default:
+			resp.Error(c, errcode.ErrInternalServer)
+		}
+		return
+	}
+
+	resp.OK(c, toAvatarResponse(avatar))
+}
+
 // ListPublic handles GET /api/v1/plaza/bots.
 // @Summary List public bots
 // @Description Returns paginated list of public bots for the bot plaza.

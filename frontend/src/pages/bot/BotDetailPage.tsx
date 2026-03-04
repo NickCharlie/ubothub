@@ -21,6 +21,7 @@ import { botApi, type Bot as BotType, type UpdateBotParams } from "@/api/bot";
 import { useAuthStore } from "@/stores/auth";
 import { Modal, Form, Input, Switch, message, Tabs } from "antd";
 import BotPricingConfig from "@/components/bot/BotPricingConfig";
+import BotAvatarSetup from "@/components/bot/BotAvatarSetup";
 
 /** Parse the JSONB config string into an object. */
 function parseConfig(raw: string): Record<string, string> {
@@ -418,6 +419,9 @@ export default function BotDetailPage() {
               </button>
             </div>
           </div>
+
+          {/* 3D Avatar setup */}
+          {bot && <BotAvatarSetup botId={bot.id} />}
 
           {/* Pricing configuration */}
           {bot && <BotPricingConfig botId={bot.id} isOwner={true} />}
